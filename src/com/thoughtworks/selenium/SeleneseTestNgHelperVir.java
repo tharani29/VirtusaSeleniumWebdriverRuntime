@@ -1,50 +1,39 @@
 /*
-* Copyright (c) 2005-2010, Virtusa Inc. (http://www.virtusa.com/) All Rights Reserved.
-* 
-* This file is part of the Virtusa Test Automation Framework project
-* Virtusa Inc. licenses this file to you under the Apache License,
-* Version 2.0 (the "License"); you may not use this file except
-* in compliance with the License.
-* 
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-* 
-*/
+ * Copyright 2004 ThoughtWorks, Inc. Licensed under the Apache License, Version
+ * 2.0 (the "License"); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law
+ * or agreed to in writing, software distributed under the License is
+ * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 
 package com.thoughtworks.selenium;
 
+
 import java.awt.AWTException;
 import java.awt.Robot;
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.FileNotFoundException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.lang.reflect.Method;
 import java.sql.Connection;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
-import java.util.ArrayList;
+import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 
+import org.apache.log4j.Logger;
 import org.openqa.selenium.WebDriver;
-import org.openqa.selenium.WebElement;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.firefox.FirefoxDriver;
+import org.openqa.selenium.firefox.FirefoxProfile;
 import org.openqa.selenium.ie.InternetExplorerDriver;
+import org.openqa.selenium.remote.DesiredCapabilities;
 import org.openqa.selenium.safari.SafariDriver;
 import org.testng.ITestContext;
 import org.testng.annotations.AfterMethod;
@@ -55,79 +44,119 @@ import org.testng.annotations.BeforeSuite;
 import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
+
 import com.opera.core.systems.OperaDriver;
 import com.virtusa.VTAF.reporter.reader.ReportBase;
 import com.virtusa.isq.vtaf.report.reporter.Reporter;
+import com.virtusa.isq.vtaf.utils.PropertyHandler;
 
+/**
+ * The Class SeleneseTestNgHelperVir.
+ */
 public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
-    public static ReportBase reporter;
-    private boolean runFromAnt = false;
-    public static Robot robot;
-    public static Properties prop;
-    public static String propertiesLocation;
 
-    public WebElement element;
-    public String errorMessages = "Verification failures : \n";
-    public String testPackageName = "";
-    protected String currentMethod = "";
-    protected String callingClassName = "";
-    protected int lineNumber = 0;
-    protected static int RETRY = 12;
-    private static String TIMEOUT = "30000";
-    public static Properties execProps;
-    protected static String identifire = "";
-    public List<String> openWindowHandleIndex;
+    /** The reporter. */
+    private static ReportBase reporter;
 
+    /** The robot. */
+    private static Robot robot;
+
+    /** The prop. */
+    private static Properties prop;
+
+    /** The properties location. */
+    private static String propertiesLocation;
+
+    /** The error messages. */
+    private String errorMessages = "Verification failures : \n";
+
+    /** The test package name. */
+    private String testPackageName = "";
+
+    /** The current method. */
+    private String currentMethod = "";
+
+    /** The calling class name. */
+    private String callingClassName = "";
+
+    /** The line number. */
+    private int lineNumber;
+
+    /** The retry count. */
+    private static int retryCount;
+
+    /** The time out period. */
+    private static String timeOutPeriod;
+
+    /** The exec props. */
+    private static Properties execProps;
+
+    /** The open window handle index. */
+    private List<String> openWindowHandleIndex;
+
+    /** The result reporter. */
     private static Reporter resultReporter;
+
+    /** The command start time. */
     private Date commandStartTime;
+
+    /** The testcase start time. */
     private Date testcaseStartTime;
+
+    /** The total execution time taken. */
     private long totalExecutionTimeTaken;
 
+    /**
+     * Sets the before test configuration for the test.
+     * 
+     * @param url
+     *            the url
+     * @param browserString
+     *            the browser string
+     * @param context
+     *            the context
+     * @throws Exception
+     *             the exception
+     */
     @BeforeTest
-    @Parameters({"selenium.url", "selenium.browser"})
-    public void setUp(@Optional("http://www.google.com") final String url,
-            @Optional("*iexplore") String browserString,
-            final ITestContext context) throws Exception {
+    @Parameters({ "selenium.url", "selenium.browser" })
+    public final void setUp(
+            @Optional("http://www.google.com") final String url,
+            @Optional final String browserString, final ITestContext context)
+            throws Exception {
+        Logger log = getLog();
         try {
-
-            if (super.browserString == null) {
-                if (browserString == null || browserString.isEmpty()) {
-                    browserString = runtimeBrowserString();
-                }
-            } else {
-                browserString = super.browserString;
+            String browserStr = super.getBrowserString();
+            if (browserStr == null || browserStr.isEmpty()) {
+                super.setBrowserString(runtimeBrowserString());
             }
-
-            log.info("Browser : " + browserString);
-            System.out.println("child setUp ....");
-            log.info("Going in to the child setup ");
-
-            super.setUp(url, browserString);
-
-            System.out.println("going out attachScreenshotListener");
-
+            log.info("Execution Browser : " + browserStr);
+            super.setUp(url, browserStr);
         } catch (Exception e) {
-            log.error("Exception occured ", e);
+            log.error("Exception occured while setting up the test ", e);
         }
         super.setCaptureScreenShotOnFailure(true);
         cleanDriverServerSessions();
     };
 
+    /**
+     * Read run prop.
+     * 
+     * @throws Exception
+     *             Signals that an I/O exception has occurred.
+     */
     @BeforeSuite
-    public void readRunProp() throws FileNotFoundException, IOException {
+    public final void readRunProp() throws Exception {
 
+        // Initializing the logger
         initLogger();
-        resultReporter = new Reporter();
+        initReporter();
         resultReporter.addNewTestExecution();
         getLogger(SeleneseTestNgHelperVir.class);
 
-        try {
-            robot = new Robot();
-        } catch (AWTException e) {
-            e.printStackTrace();
-        }
+        setRobot(new Robot());
 
-        prop = new Properties();
+        setProp(new Properties());
         String rootFile = new File("").getAbsolutePath();
         String file = "";
         if (rootFile.indexOf("grid") > -1) {
@@ -139,87 +168,83 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         } else {
             file = rootFile + File.separator + "project.properties";
         }
-        propertiesLocation = file;
-        prop.load(new FileInputStream(new File(file)));
-        runFromAnt = Boolean.parseBoolean(prop.getProperty("runFromAnt"));
-        log.info("Propery file location : " + rootFile);
-        log.info("Run from ANT : " + runFromAnt);
+        setPropertiesLocation(file);        
+        getLog().info("Propery file location : " + rootFile);
         this.readUserProp();
     }
 
-    private void readUserProp() throws FileNotFoundException, IOException {
+    /**
+     * Read user prop.
+     * 
+     * @throws IOException
+     *             Signals that an I/O exception has occurred.
+     */
+    private void readUserProp() throws IOException {
 
-        execProps = new Properties();
-        File file = new File("runtime.properties");
+        final int defaultRetryCount = 12;
+        final int defaultTimeout = 30000;
 
-        boolean exists = file.exists();
-        execProps.load(new FileInputStream("runtime.properties"));
-        try {
-            String timeOut = execProps.getProperty("TIMEOUT");
-            String retry = execProps.getProperty("RETRY");
-            String browser = execProps.getProperty("BROWSER");
+        PropertyHandler propHandler = new PropertyHandler("runtime.properties");
 
-            if (!browser.isEmpty()) {
-                super.browserString = browser;
-                System.setProperty("selenium.defaultBrowser", browserString);
-            }
-            if (!retry.isEmpty()) {
-                RETRY = Integer.parseInt(retry);
-            }
-            if (!timeOut.isEmpty()) {
-                TIMEOUT = timeOut;
-            }
-        } catch (Exception e) {
+        String timeOut = propHandler.getRuntimeProperty("TIMEOUT");
+        String retry = propHandler.getRuntimeProperty("RETRY");
+        String browser = propHandler.getRuntimeProperty("BROWSER");
+        setExecProps(propHandler.getPropertyObject());
+        
+        if (!browser.isEmpty()) {
+            super.setBrowserString(browser);
+            System.setProperty("selenium.defaultBrowser", getBrowserString());
         }
-        log.info("Retry Count : " + RETRY);
-        log.info("Timeout Period : " + TIMEOUT);
+        if (!retry.isEmpty()) {
+            retryCount = Integer.parseInt(retry);
+        } else {
+            retryCount = defaultRetryCount;
+        }
+        if (!timeOut.isEmpty()) {
+            timeOutPeriod = timeOut;
+        } else {
+            timeOutPeriod = String.valueOf(defaultTimeout);
+        }
+
+        getLog().info("Retry Count : " + retryCount);
+        getLog().info("Timeout Period : " + timeOutPeriod);
 
     }
 
+    /**
+     * Gets the selenium.
+     * 
+     */
     @BeforeClass
-    @Parameters({"selenium.restartSession"})
-    public void getSelenium(@Optional("false") final boolean restartSession) {
+    public final void getSelenium() {
 
-        reporter = new ReportBase();
         resultReporter.addNewTestSuite(this.getClass().getSimpleName());
 
-        System.out.println("Get Selenium " + selenium);
-
-        if (restartSession) {
-            System.out.println("in Selenium " + restartSession);
-
-            driver.quit();
-        }
-
     }
 
-    @SuppressWarnings("static-access")
+    /**
+     * Sets the test context.
+     * 
+     * @param method
+     *            the new test context
+     */
     @BeforeMethod
-    public void setTestContext(final Method method) {
+    public final void setTestContext(final Method method) {
 
-        String testComment = "";
-        try {
-            prop.setProperty("tcComment", testComment);
-            prop.store(new FileOutputStream(propertiesLocation), null);
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
+        PropertyHandler propHandler = new PropertyHandler(propertiesLocation);
+        propHandler.setRuntimeProperty("tcComment", "");
+        
         totalExecutionTimeTaken = 0;
         testcaseStartTime = getCurrentTime();
-
         errorMessages = "Verification failures : \n";
-        identifire = "";
-        openWindowHandleIndex = new ArrayList<String>();
-        browserString = System.getProperty("selenium.defaultBrowser");
+        setOpenWindowHandleIndex(new ArrayList<String>());
+        setBrowserString(System.getProperty("selenium.defaultBrowser"));
         this.cleanBrowserSessions();
-        log.info("******************Starting the Selenium session******************");
-        System.out
-                .println("***********************************************starting the session ...");
-
-        this.startBrowserSession(browserString);
-
-        log.info("Started the selenium session.");
+        getLog().info("Starting a new selenium webdriver session.");
+        
+        this.startBrowserSession(getBrowserString());
+        Logger log = getLog();
+        log.info("Started the selenium webdriver session.");
 
         reporter.startReporter(method.getDeclaringClass().getCanonicalName(),
                 method.getName());
@@ -229,8 +254,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
         getLogger(this.getClass());
 
-        this.getClass().getPackage().toString();
-        System.out.println(this.getClass().getPackage().toString());
         testPackageName =
                 this.getClass().getPackage().toString().split("package ")[1];
 
@@ -238,52 +261,59 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
         startOfTestCase();
 
-        log.info("############################# START OF TEST CASE #############################");
+        log.info("Starting the test case..");
     }
 
-    public void startBrowserSession(final String browserString) {
+    /**
+     * Start browser session.
+     * 
+     * @param browserString
+     *            the browser string
+     */
+    public final void startBrowserSession(final String browserString) {
 
+        DesiredCapabilities capabilities = getWebDriverCapabilities();
+        WebDriver driver;
         if (browserString.contains("chrome")
                 || browserString.contains("Chrome")) {
             driver = new ChromeDriver();
 
         } else if (browserString.contains("safari")) {
 
-            WebDriverCapabilities.safari();
-            driver = new SafariDriver(WebDriverCapabilities);
+            DesiredCapabilities.safari();
+            driver = new SafariDriver(capabilities);
 
         } else if (browserString.contains("iexplore")) {
 
-            WebDriverCapabilities.internetExplorer();
-            WebDriverCapabilities.setJavascriptEnabled(true);
-            driver = new InternetExplorerDriver(WebDriverCapabilities);
+            DesiredCapabilities.internetExplorer();
+            capabilities.setJavascriptEnabled(true);
+            driver = new InternetExplorerDriver(capabilities);
 
         } else if (browserString.contains("firefox")) {
-
-            defaultProfile.setEnableNativeEvents(true);
-            driver = new FirefoxDriver(defaultProfile);
+            FirefoxProfile profile = getDefaultProfile();
+            profile.setEnableNativeEvents(true);
+            driver = new FirefoxDriver(profile);
 
         } else if (browserString.contains("opera")) {
 
-            WebDriverCapabilities.opera();
-            driver = new OperaDriver(WebDriverCapabilities);
-
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            DesiredCapabilities.opera();
+            driver = new OperaDriver(capabilities);
         } else {
+            getLog().info("Unsupported browser type passed " + browserString);
             throw new AssertionError("Unsupported Browser");
-        }
+        } 
 
-        if (seleniumInstances.isEmpty()) {
-            seleniumInstances.put("default", driver);
+        setDriver(driver);
+        if (getSeleniumInstances().isEmpty()) {
+            putSeleniumInstances("default", driver);
         } else {
-            seleniumInstances.put(seleniumInstanceName, driver);
+            putSeleniumInstances(getSeleniumInstanceName(), driver);
         }
     }
 
+    /**
+     * Clean driver server sessions.
+     */
     private void cleanDriverServerSessions() {
         this.killBrowserProcess("chromedriver");
         if (isx64bit()) {
@@ -293,73 +323,96 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         }
     }
 
+    /**
+     * Clean browser sessions.
+     */
     private void cleanBrowserSessions() {
-
-        if (browserString.contains("iexplore")) {
+        String browser = getBrowserString();
+        if (browser.contains("iexplore")) {
             this.killBrowserProcess("iexplore");
 
-        } else if (browserString.contains("chrome")
-                || browserString.contains("Chrome")) {
+        } else if (browser.contains("chrome") || browser.contains("Chrome")) {
             this.killBrowserProcess("chrome");
 
-        } else if (browserString.contains("firefox")) {
+        } else if (browser.contains("firefox")) {
             this.killBrowserProcess("firefox");
 
-        } else if (browserString.contains("opera")) {
+        } else if (browser.contains("opera")) {
             this.killBrowserProcess("opera");
 
-        } else if (browserString.contains("safari")) {
+        } else if (browser.contains("safari")) {
             this.killBrowserProcess("safari");
         }
     }
 
-    @AfterMethod(alwaysRun = true)
-    public void checkForVerificationError() {
+    /*
+     * @BeforeSuite
+     * 
+     * @Parameters({ "selenium.host", "selenium.port" }) public void
+     * attachScreenshotListener(@Optional("localhost") String host,
+     * 
+     * @Optional("4444") String port, ITestContext context) {
+     * 
+     * }
+     */
 
+    /**
+     * Check for verification error.
+     */
+    @AfterMethod(alwaysRun = true)
+    public final void checkForVerificationError() {
+
+        Logger log = getLog();
         getLogger(SeleneseTestNgHelperVir.class);
-        log.info("############################# END OF TEST CASE #############################");
+        log.info("End of the test case.");
 
         log.info("Total Time taken to execute the commands : "
                 + totalExecutionTimeTaken + " ms");
         logTime("Total Time taken to execute the test case : ",
                 testcaseStartTime, getCurrentTime());
 
-        System.out
-                .println("***********************************************Closing the session ...");
+        Map<String, WebDriver> seleniumInstances = getSeleniumInstances();
 
-        for (String key : seleniumInstances.keySet()) {
+        for (Map.Entry<String, WebDriver> entry : seleniumInstances.entrySet()) {
             try {
-                seleniumInstances.get(key).quit();
+                entry.getValue().quit();
             } catch (Exception e) {
-
                 e.printStackTrace();
             }
         }
-        for (String key : databaseInstances.keySet()) {
-            try {
-                databaseInstances.get(key).close();
-            } catch (Exception e) {
-                System.out
-                        .println("\n\n\n Unable to close the connection.....\n\n\n");
-                e.printStackTrace();
 
+        Map<String, Connection> databaseInstances = getDatabaseInstances();
+        for (Map.Entry<String, Connection> entry : databaseInstances.entrySet()) {
+            try {
+                entry.getValue().close();
+            } catch (Exception e) {
+                e.printStackTrace();
             }
         }
-
     }
 
+    /**
+     * Cleanup sessions.
+     */
     @AfterMethod(alwaysRun = true)
-    public void cleanupSessions() {
-        seleniumInstances = new HashMap<String, WebDriver>();
-        databaseInstances = new HashMap<String, Connection>();
+    public final void cleanupSessions() {
+        setSeleniumInstances(new HashMap<String, WebDriver>());
+        setDatabaseInstances(new HashMap<String, Connection>());
         endTestReporting(false);
         super.checkForVerificationErrors();
         this.cleanBrowserSessions();
     }
 
+    /**
+     * Tear down.
+     * 
+     * @throws Exception
+     *             the exception
+     * @see com.thoughtworks.selenium.SeleneseTestBaseVir#tearDown()
+     * @AfterSuite.
+     */
     @AfterSuite
-    @Override
-    public void tearDown() throws Exception {
+    public final void tearDownSuite() throws Exception {
         resultReporter.endTestReporting();
         super.tearDown();
         cleanDriverServerSessions();
@@ -369,119 +422,93 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      * Kill the browser process.<br>
      * Specify the browser process to be killed.
      * 
+     * @param process
+     *            the process
      * @Parameters<br> process name which should be killed. <br>
      *                 Ex:<br>
      *                 If the process is firefox.exe parameter should be firefox
      */
-    public void killBrowserProcess(final String process) {
-        String processName = process + ".exe";
-
+    public final void killBrowserProcess(final String process) {
+        String processName = process.concat(".exe");
+        Logger log = null;
+        final int pauseTimeAfterBrowserKill = 3000;
         try {
+            log = getLog();
             if (isProcessRunning(processName)) {
                 this.killProcess(processName);
-                System.out.println("INFO : " + process
-                        + " browser session cleaned successfully");
-                log.info("INFO : " + process
-                        + " browser session cleaned successfully");
-                Thread.sleep(3000);
+                
+                log.info(process.concat(" browser session cleaned successfully"));
+                pause(pauseTimeAfterBrowserKill);
             }
         } catch (Exception ex) {
-            System.out.println("INFO : " + process
-                    + " browser session clean failed");
-            log.error("INFO : " + process + " browser session clean failed", ex);
+            log.error(process.concat(" browser session clean failed"), ex);
         }
     }
 
-    private final String TASKLIST = "tasklist";
-    private final String KILL = "taskkill /F /IM ";
+    
 
-    private boolean isProcessRunning(final String serviceName) throws Exception {
-        Process p = Runtime.getRuntime().exec(TASKLIST);
-        BufferedReader reader =
-                new BufferedReader(new InputStreamReader(p.getInputStream()));
-        String line;
+    /**
+     * Inits the reporter.
+     */
+    public static synchronized void initReporter() {
+        reporter = new ReportBase();
+        resultReporter = new Reporter();
+    }
 
-        while ((line = reader.readLine()) != null) {
-
-            if (line.contains(serviceName)) {
-                return true;
-            }
+    /**
+     * Inits the robot.
+     */
+    public static synchronized void initRobot() {
+        try {
+            robot = new Robot();
+        } catch (AWTException e) {
+            e.printStackTrace();
         }
-        return false;
     }
 
-    private void killProcess(final String serviceName) throws Exception {
-        Runtime.getRuntime().exec(KILL + serviceName);
-    }
-
-    // @Override static method of super class (which assumes JUnit conventions)
-    public static void assertEquals(final Object actual, final Object expected) {
-        SeleneseTestBase.assertEquals(expected, actual);
-    }
-
-    // @Override static method of super class (which assumes JUnit conventions)
-    public static void assertEquals(final String actual, final String expected) {
-        SeleneseTestBase.assertEquals(expected, actual);
-    }
-
-    // @Override static method of super class (which assumes JUnit conventions)
-    public static void assertEquals(final String actual, final String[] expected) {
-        SeleneseTestBase.assertEquals(expected, actual);
-    }
-
-    // @Override static method of super class (which assumes JUnit conventions)
-    public static void assertEquals(final String[] actual,
-            final String[] expected) {
-        SeleneseTestBase.assertEquals(expected, actual);
-    }
-
-    // @Override static method of super class (which assumes JUnit conventions)
-    public static boolean seleniumEquals(final Object actual,
-            final Object expected) {
-        return SeleneseTestBase.seleniumEquals(expected, actual);
-    }
-
-    // @Override static method of super class (which assumes JUnit conventions)
-    public static boolean seleniumEquals(final String actual,
-            final String expected) {
-        return SeleneseTestBase.seleniumEquals(expected, actual);
-    }
-
-    @Override
-    public void verifyEquals(final Object actual, final Object expected) {
-        super.verifyEquals(expected, actual);
-    }
-
-    @Override
-    public void verifyEquals(final String[] actual, final String[] expected) {
-        super.verifyEquals(expected, actual);
-    }
-
-    public void startOfTestCase() {
-
+    /**
+     * Start of test case.
+     */
+    public final void startOfTestCase() {
+        WebDriver driver = getDriver();
+        final int pageloadTimeOut = 300;
         try {
             driver.manage().window().maximize();
         } catch (Exception e) {
             e.printStackTrace();
         }
+        // driver.manage().timeouts().implicitlyWait(300, TimeUnit.SECONDS);
         try {
-            driver.manage().timeouts().pageLoadTimeout(300, TimeUnit.SECONDS);
+            driver.manage().timeouts()
+                    .pageLoadTimeout(pageloadTimeOut, TimeUnit.SECONDS);
         } catch (Exception e) {
             e.printStackTrace();
         }
 
     }
 
-    public void reportresult(final boolean isAssert, final String step,
-            final String result, String message) {
+    /**
+     * Reportresult.
+     * 
+     * @param isAssert
+     *            the is assert
+     * @param step
+     *            the step
+     * @param result
+     *            the result
+     * @param messageString
+     *            the message string
+     */
+    public final void reportresult(final boolean isAssert, final String step,
+            final String result, final String messageString) {
+        String message = messageString;
 
         StackTraceElement[] stackTraceElements =
                 Thread.currentThread().getStackTrace();
-        callingClassName =
-                stackTraceElements[0].getClassName().toString().toString();
+        callingClassName = stackTraceElements[0].getClassName();
         String callingMethod = "";
         for (int i = 0; i < stackTraceElements.length; i++) {
-            callingClassName = stackTraceElements[i].getClassName().toString();
+            callingClassName = stackTraceElements[i].getClassName();
             if (callingClassName.startsWith(testPackageName)) {
                 callingMethod = stackTraceElements[i].getMethodName();
                 lineNumber = stackTraceElements[i].getLineNumber();
@@ -489,13 +516,14 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
             }
         }
         System.out.println(callingClassName);
-        Class callingClass = null;
+        Class< ? > callingClass = null;
         try {
             callingClass = Class.forName(callingClassName);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
         getLogger(callingClass);
+        Logger log = getLog();
         if (!currentMethod.equals(callingMethod)) {
             log.info("Executing : " + callingClass.getName() + " : "
                     + callingMethod);
@@ -509,14 +537,18 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
         reporter.reportResult(step, result, message);
 
+        // Adding data to the new reporter
         try {
 
-            String testStep = step.substring(0, step.indexOf(":"));
+            String testStep = step.substring(0, step.indexOf(':'));
+            
+            // replace xml special characters in the message.
             message = replaceXMLSpecialCharacters(message);
-            if (result.equals("PASSED")) {
+            if ("PASSED".equals(result)) {
                 String testMessage = message;
-                if (message.equals("") || message == null) {
-                    testMessage = "Passed";
+                String stepDesc = step.substring(step.indexOf(':') + 1, step.length());
+                if ("".equals(message) || message == null) {
+                    testMessage = stepDesc;
                 }
                 resultReporter.reportStepResults(true, testStep, testMessage,
                         "Success", "");
@@ -530,62 +562,282 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         }
 
     }
-
-    public String replaceXMLSpecialCharacters(final String text) {
-        String replaced = text;
-
-        replaced = replaced.replaceAll("<", "&lt;");
-        replaced = replaced.replaceAll(">", "&gt;");
-        replaced = replaced.replaceAll("&", "&amp;");
-        replaced = replaced.replaceAll("'", "&apos;");
-        replaced = replaced.replaceAll("\"", "&quot;");
-        replaced = replaced.replaceAll("»", "");
-        return replaced;
-    }
-
-    private static String getSourceLines(final StackTraceElement[] StackTrace) {
-        String lines = "";
-        for (int elementid = 0; elementid < StackTrace.length; elementid++) {
-            if (StackTrace[elementid].toString().indexOf("invoke0") != -1) {
-                lines =
-                        lines + StackTrace[elementid - 1] + "|"
-                                + StackTrace[elementid - 2] + "|"
-                                + StackTrace[elementid - 3];
-
-            }
-
-        }
-        return lines;
-
-    }
-
-    public void endTestReporting(final boolean testFailed) {
+   
+    /**
+     * End test reporting.
+     * 
+     * @param testFailed
+     *            the test failed
+     */
+    public final void endTestReporting(final boolean testFailed) {
 
         reporter.endResultReporting(testFailed);
 
     }
 
-    public Date getCurrentTime() {
-        Date time = Calendar.getInstance().getTime();
-        return time;
+    /**
+     * Gets the current time.
+     * 
+     * @return the current time
+     */
+    public final Date getCurrentTime() {
+        return Calendar.getInstance().getTime();
     }
 
-    public void setCommandStartTime(final Date startTime) {
+    /**
+     * Sets the command start time.
+     * 
+     * @param startTime
+     *            the new command start time
+     */
+    protected final void setCommandStartTime(final Date startTime) {
         this.commandStartTime = startTime;
     }
 
-    public Date getCommandStartTime() {
+    /**
+     * Gets the command start time.
+     * 
+     * @return the command start time
+     */
+    protected final Date getCommandStartTime() {
         return this.commandStartTime;
     }
 
+    /**
+     * Log time.
+     * 
+     * @param desc
+     *            the desc
+     * @param start
+     *            the start
+     * @param end
+     *            the end
+     */
     private void logTime(final String desc, final Date start, final Date end) {
-
-        if (!desc.startsWith("PAUSE")) {
-            Long timeDiff = Math.abs(end.getTime() - start.getTime());
-            totalExecutionTimeTaken += timeDiff;
-            log.info("Time taken to execute " + desc + " is : " + timeDiff
-                    + " ms");
+        Logger log = null;
+        try {
+            log = getLog();
+            if (!desc.startsWith("PAUSE")) {
+                Long timeDiff = Math.abs(end.getTime() - start.getTime());
+                totalExecutionTimeTaken += timeDiff;
+                log.info("Time taken to execute " + desc + " " + timeDiff
+                        + " ms");
+            }
+        } catch (Exception e) {
+            log.info(e.getMessage());
         }
+    }
+
+    /**
+     * @return the reporter
+     */
+    public static final ReportBase getReporter() {
+        return reporter;
+    }
+
+    /**
+     * @param reporterObj
+     *            the reporter to set
+     */
+    public static final void setReporter(final ReportBase reporterObj) {
+        SeleneseTestNgHelperVir.reporter = reporterObj;
+    }
+
+    /**
+     * @return the robot
+     */
+    public static final Robot getRobot() {
+        return robot;
+    }
+
+    /**
+     * @param robotObj
+     *            the robot to set
+     */
+    public static final void setRobot(final Robot robotObj) {
+        SeleneseTestNgHelperVir.robot = robotObj;
+    }
+
+    /**
+     * @return the prop
+     */
+    public static final Properties getProp() {
+        return prop;
+    }
+
+    /**
+     * @param propObj
+     *            the prop to set
+     */
+    public static final void setProp(final Properties propObj) {
+        SeleneseTestNgHelperVir.prop = propObj;
+    }
+
+    /**
+     * @return the propertiesLocation
+     */
+    public static final String getPropertiesLocation() {
+        return propertiesLocation;
+    }
+
+    /**
+     * @param propertiesLocationString
+     *            the propertiesLocation to set
+     */
+    public static final void setPropertiesLocation(
+            final String propertiesLocationString) {
+        SeleneseTestNgHelperVir.propertiesLocation = propertiesLocationString;
+    }
+
+    /**
+     * @return the errorMessages
+     */
+    public final String getErrorMessages() {
+        return errorMessages;
+    }
+
+    /**
+     * @param errorMessagesString
+     *            the errorMessages to set
+     */
+    public final void setErrorMessages(final String errorMessagesString) {
+        this.errorMessages = errorMessagesString;
+    }
+
+    /**
+     * @return the testPackageName
+     */
+    public final String getTestPackageName() {
+        return testPackageName;
+    }
+
+    /**
+     * @param testPackageNameString
+     *            the testPackageName to set
+     */
+    public final void setTestPackageName(final String testPackageNameString) {
+        this.testPackageName = testPackageNameString;
+    }
+
+    /**
+     * @return the currentMethod
+     */
+    public final String getCurrentMethod() {
+        return currentMethod;
+    }
+
+    /**
+     * @param currentMethodString
+     *            the currentMethod to set
+     */
+    public final void setCurrentMethod(final String currentMethodString) {
+        this.currentMethod = currentMethodString;
+    }
+
+    /**
+     * @return the callingClassName
+     */
+    public final String getCallingClassName() {
+        return callingClassName;
+    }
+
+    /**
+     * @param callingClassNameString
+     *            the callingClassName to set
+     */
+    public final void setCallingClassName(final String callingClassNameString) {
+        this.callingClassName = callingClassNameString;
+    }
+
+    /**
+     * @return the lineNumber
+     */
+    public final int getLineNumber() {
+        return lineNumber;
+    }
+
+    /**
+     * @param lineNumberInt
+     *            the lineNumber to set
+     */
+    public final void setLineNumber(final int lineNumberInt) {
+        this.lineNumber = lineNumberInt;
+    }
+
+    /**
+     * @return the execProps
+     */
+    public static final Properties getExecProps() {
+        return execProps;
+    }
+
+    /**
+     * @param execPropsObj
+     *            the execProps to set
+     */
+    public static final void setExecProps(final Properties execPropsObj) {
+        SeleneseTestNgHelperVir.execProps = execPropsObj;
+    }
+
+    /**
+     * @return the openWindowHandleIndex
+     */
+    public final List<String> getOpenWindowHandleIndex() {
+        return openWindowHandleIndex;
+    }
+
+    /**
+     * @param openWindowHandleIndexList
+     *            the openWindowHandleIndex to set
+     */
+    public final void setOpenWindowHandleIndex(
+            final List<String> openWindowHandleIndexList) {
+        this.openWindowHandleIndex = openWindowHandleIndexList;
+    }
+
+    /**
+     * @return the resultReporter
+     */
+    public static final Reporter getResultReporter() {
+        return resultReporter;
+    }
+
+    /**
+     * @param resultReporterObj
+     *            the resultReporter to set
+     */
+    public static final void setResultReporter(final Reporter resultReporterObj) {
+        SeleneseTestNgHelperVir.resultReporter = resultReporterObj;
+    }
+
+    /**
+     * @return the totalExecutionTimeTaken
+     */
+    public final long getTotalExecutionTimeTaken() {
+        return totalExecutionTimeTaken;
+    }
+
+    /**
+     * @param totalTimeTaken
+     *            the totalExecutionTimeTaken to set
+     */
+    public final void setTotalExecutionTimeTaken(final long totalTimeTaken) {
+        this.totalExecutionTimeTaken = totalTimeTaken;
+    }
+
+    /**
+     * @return the retryCount
+     */
+    public static final int getRetryCount() {
+        return retryCount;
+    }
+
+    /**
+     * @param retryCountInt
+     *            the retryCount to set
+     */
+    public static final void setRetryCount(final int retryCountInt) {
+        SeleneseTestNgHelperVir.retryCount = retryCountInt;
     }
 
 }

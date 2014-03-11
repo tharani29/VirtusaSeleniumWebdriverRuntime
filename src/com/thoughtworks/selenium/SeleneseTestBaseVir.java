@@ -1,128 +1,99 @@
 /*
-* Copyright (c) 2005-2010, Virtusa Inc. (http://www.virtusa.com/) All Rights Reserved.
-* 
-* This file is part of the Virtusa Test Automation Framework project
-* Virtusa Inc. licenses this file to you under the Apache License,
-* Version 2.0 (the "License"); you may not use this file except
-* in compliance with the License.
-* 
-* You may obtain a copy of the License at
-*
-* http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-* 
-*/
-
+ * Copyright 2004 ThoughtWorks, Inc. Licensed under the Apache License, Version
+ * 2.0 (the "License"); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law
+ * or agreed to in writing, software distributed under the License is
+ * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 
 package com.thoughtworks.selenium;
 
+
+import java.io.BufferedReader;
 import java.io.File;
-import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.io.InputStreamReader;
 import java.lang.reflect.Method;
+import java.sql.Connection;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.regex.Pattern;
 
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxProfile;
 import org.openqa.selenium.remote.DesiredCapabilities;
-import org.testng.ITestResult;
-import org.testng.Reporter;
-import org.testng.internal.TestResult;
-import java.sql.Connection;
 
 /**
  * Provides a base class that implements some handy functionality for Selenium
  * testing (you are <i>not</i> required to extend this class).
- * 
- * <p>
- * This class adds a number of "verify" commands, which are like "assert"
- * commands, but they don't stop the test when they fail. Instead, verification
- * errors are all thrown at once during tearDown.
- * </p>
- * 
- * @author Nelson Sproul (nsproul@bea.com) Mar 13-06
  */
 public class SeleneseTestBaseVir {
 
-    private static final boolean THIS_IS_WINDOWS = File.pathSeparator
-            .equals(";");
+    /** The Constant THIS_IS_WINDOWS. */
+    private static final boolean THIS_IS_WINDOWS = ";"
+            .equals(File.pathSeparator);
 
+    /** The capture screen shot on failure. */
     private boolean captureScreenShotOnFailure = false;
 
-    /** Use this object to run all of your selenium tests */
-    public Selenium selenium;
+    /** The driver. */
+    private WebDriver driver = null;
 
-    public WebDriver driver;
-    public static String browserString;
-    public static DesiredCapabilities WebDriverCapabilities;
-    public Map<String, WebDriver> seleniumInstances =
+    /** The browser string. */
+    private static String browserString;
+
+    /** The web driver capabilities. */
+    private static DesiredCapabilities webDriverCapabilities;
+
+    /** The selenium instances. */
+    private Map<String, WebDriver> seleniumInstances =
             new HashMap<String, WebDriver>();
-    public String seleniumInstanceName = "";
-    public static FirefoxProfile defaultProfile;
 
-    public static Logger log;
-    public Map<String, Connection> databaseInstances =
+    /** The selenium instance name. */
+    private String seleniumInstanceName = "";
+
+    /** The default profile. */
+    private static FirefoxProfile defaultProfile;
+
+    /** The log. */
+    private static Logger log;
+
+    /** The database instances. */
+    private Map<String, Connection> databaseInstances =
             new HashMap<String, Connection>();
 
-    protected StringBuffer verificationErrors = new StringBuffer();
-
-    public SeleneseTestBaseVir() {
-        super();
-    }
+    /** The verification errors. */
+    private StringBuffer verificationErrors = new StringBuffer();
 
     /**
-     * Initialize the logger
+     * Initialize the logger.
      * */
-    public void initLogger() {
+    public final void initLogger() {
         PropertyConfigurator.configure("log4j.properties");
     }
 
     /**
-     * Get the logger for each corresponding class
-     * */
-    public void getLogger(final Class clz) {
-        log = Logger.getLogger(clz);
+     * Get the logger for each corresponding class.
+     * 
+     * @param clz
+     *            the clz
+     * 
+     */
+    public final void getLogger(final Class< ? > clz) {
+        setLog(Logger.getLogger(clz));
     }
 
     /**
-     * Calls this.setUp(null)
+     * Runtime browser string.
      * 
-     * @see #setUp(String)
+     * @return the string
      */
-    public void setUp() throws Exception {
-        this.setUp(null);
-    }
-
-    /**
-     * Calls this.setUp with the specified url and a default browser. On
-     * Windows, the default browser is *iexplore; otherwise, the default browser
-     * is *firefox.
-     * 
-     * @see #setUp(String, String)
-     * @param url
-     *            the baseUrl to use for your Selenium tests
-     * @throws Exception
-     * 
-     */
-    public void setUp(final String browserString) throws Exception {
-
-    }
-
-    protected String runtimeBrowserString() {
+    protected final String runtimeBrowserString() {
         String defaultBrowser = System.getProperty("selenium.defaultBrowser");
-        if (null != defaultBrowser && defaultBrowser.startsWith("${")) {
-            defaultBrowser = null;
-        }
         if (defaultBrowser == null) {
             if (THIS_IS_WINDOWS) {
                 defaultBrowser = "*iexplore";
@@ -141,94 +112,129 @@ public class SeleneseTestBaseVir {
      * property is specified, that is used - failing that, the default of 4444
      * is used.
      * 
-     * @see #setUp(String, String, int)
      * @param url
      *            the baseUrl for your tests
-     * @param browserString
+     * @param browserName
      *            the browser to use, e.g. *firefox
      * @throws Exception
+     *             the exception
+     * @see #setUp(String, String, int)
      */
-    public void setUp(final String url, final String browserString)
+    public final void setUp(final String url, final String browserName)
             throws Exception {
-        System.out.println("child 2 setUp ....");
 
-        setUp(url, browserString, getDefaultPort());
+        setUp(url, browserName, getDefaultPort());
     }
 
+    /**
+     * Gets the default port.
+     * 
+     * @return the default port
+     */
     private int getDefaultPort() {
+        final int num = 4444;
         try {
-            Class c =
+            Class< ? > c =
                     Class.forName("org.openqa.selenium.server.RemoteControlConfiguration");
             Method getDefaultPort = c.getMethod("getDefaultPort", new Class[0]);
             Integer portNumber =
                     (Integer) getDefaultPort.invoke(null, new Object[0]);
             return portNumber.intValue();
+        } catch (ClassNotFoundException e) {
+            e.printStackTrace();
         } catch (Exception e) {
-            return Integer.getInteger("selenium.port", 4444).intValue();
+
+            e.printStackTrace();
         }
+        return Integer.getInteger("selenium.port", num).intValue();
     }
 
-    public void setUp(String url, final String browserString, final int port) {
-        if (url == null) {
-            url = "http://localhost:" + port;
-        }
-        System.out.println("inside setUp");
-        this.configWebDriver(browserString);
+    /**
+     * Sets the up.
+     * 
+     * @param address
+     *            the url
+     * @param browserName
+     *            the browser string
+     * @param port
+     *            the port
+     */
+    public final void setUp(final String address, final String browserName,
+            final int port) {
+
+        this.configWebDriver(browserName);
     }
 
-    public void setUp(final String instanceName, final String browserString,
-            final String serverConfig) {
+    /**
+     * Sets the up.
+     * 
+     * @param instanceName
+     *            the instance name
+     * @param browserName
+     *            the browser string
+     * @param serverConfig
+     *            the server config
+     */
+    public final void setUp(final String instanceName,
+            final String browserName, final String serverConfig) {
 
-        System.out.println("inside setUp");
-        this.configWebDriver(browserString);
+        this.configWebDriver(browserName);
         seleniumInstanceName = instanceName;
 
         if (!serverConfig.isEmpty()) {
-            String commandSet[] = serverConfig.split(",");
-
+            String[] commandSet = serverConfig.split(",");
+            int commandIndex = 0;
+            int inputIndex = 1;
             for (String fullCommand : commandSet) {
                 try {
-                    String command = fullCommand.split("=")[0].toLowerCase();
-                    String input = fullCommand.split("=")[1];
+                    String command =
+                            fullCommand.split("=")[commandIndex]
+                                    .toLowerCase(Locale.getDefault());
+                    String input = fullCommand.split("=")[inputIndex];
 
-                    switch (command) {
-                    case "firefoxprofile":
+                    if ("firefoxprofile".equalsIgnoreCase(command)) {
+
                         try {
-                            defaultProfile =
-                                    new FirefoxProfile(new File(input));
+                            setDefaultProfile(new FirefoxProfile(
+                                    new File(input)));
                         } catch (Exception e) {
-                            System.err
-                                    .println("Cannot find the specific firefox profile. Switching to the default profile.");
+                            log.error("Cannot find the firefox profile. Switching to the default.", e);
                             e.printStackTrace();
                         }
                     }
+
                 } catch (Exception e) {
+                    log.error("Unexpected error occured.", e);
                     e.printStackTrace();
                 }
             }
         }
     }
 
-    public void configWebDriver(final String browserString) {
+    /**
+     * Config web driver.
+     * 
+     * @param browserName
+     *            the browser string
+     */
+    public final void configWebDriver(final String browserName) {
         if (browserString.contains("chrome")
                 || browserString.contains("Chrome")) {
 
-            SeleneseTestBaseVir.browserString = browserString;
+            setBrowserString(browserString);
             File chromedriver =
                     new File("lib" + File.separator + "chromedriver.exe");
             System.setProperty("webdriver.chrome.driver",
                     chromedriver.getAbsolutePath());
-            WebDriverCapabilities = new DesiredCapabilities();
-
+            setWebDriverCapabilities(new DesiredCapabilities());
         } else if (browserString.contains("safari")) {
 
-            SeleneseTestBaseVir.browserString = browserString;
-            WebDriverCapabilities = new DesiredCapabilities();
-
+            setBrowserString(browserString);
+            setWebDriverCapabilities(new DesiredCapabilities());
         } else if (browserString.contains("iexplore")) {
 
-            SeleneseTestBaseVir.browserString = browserString;
-            WebDriverCapabilities = new DesiredCapabilities();
+            setBrowserString(browserString);
+            setWebDriverCapabilities(new DesiredCapabilities());
             File iedriver;
             if (isx64bit()) {
                 iedriver =
@@ -244,370 +250,172 @@ public class SeleneseTestBaseVir {
 
         } else if (browserString.contains("firefox")) {
 
-            SeleneseTestBaseVir.browserString = browserString;
-            WebDriverCapabilities = new DesiredCapabilities();
-            defaultProfile = new FirefoxProfile();
+            setBrowserString(browserString);
+            setWebDriverCapabilities(new DesiredCapabilities());
+            setDefaultProfile(new FirefoxProfile());
         } else if (browserString.contains("opera")) {
 
-            SeleneseTestBaseVir.browserString = browserString;
-            WebDriverCapabilities = new DesiredCapabilities();
+            setBrowserString(browserString);
+            setWebDriverCapabilities(new DesiredCapabilities());
         } else {
             throw new AssertionError("Unsupported Browser");
         }
     }
 
-    protected boolean isx64bit() {
+    /**
+     * Checks if is x64bit.
+     * 
+     * @return true, if is x64bit
+     */
+    protected final boolean isx64bit() {
         String architecture = System.getProperty("os.arch");
-        if (architecture.contains("64")) {
-            return true;
-        } else {
-            return false;
-        }
+        return architecture.contains("64");
+
     }
 
-    /** Like assertTrue, but fails at the end of the test (during tearDown) */
-    public void verifyTrue(final boolean b) {
+    /**
+     * Sets the browser string.
+     * 
+     * @param browser
+     *            the new browser string
+     */
+    public static synchronized void setBrowserString(final String browser) {
+        browserString = browser;
+    }
+    
+    
+    /**
+     * Checks if is process running.
+     * 
+     * @param serviceName
+     *            the service name
+     * @return true, if is process running
+     * @throws Exception
+     *             the exception
+     */
+    public final boolean isProcessRunning(final String serviceName) throws Exception {
+        String tasklist = "tasklist";
+        Process p = Runtime.getRuntime().exec(tasklist);
+        BufferedReader reader = null;
         try {
-            assertTrue(b);
-        } catch (Error e) {
-            verificationErrors.append(throwableToString(e));
-        }
-    }
+            reader =
+                    new BufferedReader(
+                            new InputStreamReader(p.getInputStream()));
+            String line;
 
-    /** Overloaded to handle custom error messages */
-    public void verifyTrue(final String message, final boolean b) {
-        try {
-            ITestResult reult = new TestResult();
-            reult = Reporter.getCurrentTestResult();
-            reult.setStatus(ITestResult.SUCCESS);
-
-            System.out.println(reult.getMethod() + "   " + reult.getClass());
-            System.out.println(new Throwable(message).getStackTrace());
-            reult.setThrowable(new Throwable(message));
-
-            Reporter.setCurrentTestResult(reult);
-        } catch (Error e) {
-            verificationErrors.append(throwableToString(e));
-        }
-    }
-
-    /** Like assertFalse, but fails at the end of the test (during tearDown) */
-    public void verifyFalse(final boolean b) {
-        try {
-            assertFalse(b);
-        } catch (Error e) {
-            verificationErrors.append(throwableToString(e));
-        }
-    }
-
-    /** Returns the body text of the current page */
-    public String getText() {
-        return selenium.getEval("this.page().bodyText()");
-    }
-
-    /** Like assertEquals, but fails at the end of the test (during tearDown) */
-    public void verifyEquals(final Object s1, final Object s2) {
-        try {
-            assertEquals(s1, s2);
-        } catch (Error e) {
-            verificationErrors.append(throwableToString(e));
-        }
-    }
-
-    /** Like assertEquals, but fails at the end of the test (during tearDown) */
-    public void verifyEquals(final boolean s1, final boolean s2) {
-        try {
-            assertEquals(new Boolean(s1), new Boolean(s2));
-        } catch (Error e) {
-            verificationErrors.append(throwableToString(e));
-        }
-    }
-
-    /** Like JUnit's Assert.assertEquals, but knows how to compare string arrays */
-    public static void assertEquals(final Object s1, final Object s2) {
-        if (s1 instanceof String && s2 instanceof String) {
-            assertEquals((String) s1, (String) s2);
-        } else if (s1 instanceof String && s2 instanceof String[]) {
-            assertEquals((String) s1, (String[]) s2);
-        } else if (s1 instanceof String && s2 instanceof Number) {
-            assertEquals((String) s1, ((Number) s2).toString());
-        } else {
-            if (s1 instanceof String[] && s2 instanceof String[]) {
-
-                String[] sa1 = (String[]) s1;
-                String[] sa2 = (String[]) s2;
-                if (sa1.length != sa2.length) {
-                    throw new Error("Expected " + sa1 + " but saw " + sa2);
-                }
-                for (int j = 0; j < sa1.length; j++) {
-                    assertEquals(sa1[j], sa2[j]);
+            while ((line = reader.readLine()) != null) {
+                if (line.contains(serviceName)) {
+                    return true;
                 }
             }
+        } finally {
+            if (reader != null) {
+                reader.close();
+            }
         }
+        return false;
     }
 
     /**
-     * Like JUnit's Assert.assertEquals, but handles "regexp:" strings like HTML
-     * Selenese
-     */
-    public static void assertEquals(final String s1, final String s2) {
-        assertTrue("Expected \"" + s1 + "\" but saw \"" + s2 + "\" instead",
-                seleniumEquals(s1, s2));
-    }
-
-    /**
-     * Like JUnit's Assert.assertEquals, but joins the string array with commas,
-     * and handles "regexp:" strings like HTML Selenese
-     */
-    public static void assertEquals(final String s1, final String[] s2) {
-        assertEquals(s1, join(s2, ','));
-    }
-
-    /**
-     * Compares two strings, but handles "regexp:" strings like HTML Selenese
+     * Kill process.
      * 
-     * @param expectedPattern
-     * @param actual
-     * @return true if actual matches the expectedPattern, or false otherwise
+     * @param serviceName
+     *            the service name
+     * @throws Exception
+     *             the exception
      */
-    public static boolean seleniumEquals(String expectedPattern, String actual) {
-        if (actual.startsWith("regexp:") || actual.startsWith("regex:")
-                || actual.startsWith("regexpi:")
-                || actual.startsWith("regexi:")) {
-            // swap 'em
-            String tmp = actual;
-            actual = expectedPattern;
-            expectedPattern = tmp;
-        }
-        Boolean b;
-        b = handleRegex("regexp:", expectedPattern, actual, 0);
-        if (b != null) {
-            return b.booleanValue();
-        }
-        b = handleRegex("regex:", expectedPattern, actual, 0);
-        if (b != null) {
-            return b.booleanValue();
-        }
-        b =
-                handleRegex("regexpi:", expectedPattern, actual,
-                        Pattern.CASE_INSENSITIVE);
-        if (b != null) {
-            return b.booleanValue();
-        }
-        b =
-                handleRegex("regexi:", expectedPattern, actual,
-                        Pattern.CASE_INSENSITIVE);
-        if (b != null) {
-            return b.booleanValue();
-        }
-
-        if (expectedPattern.startsWith("exact:")) {
-            String expectedExact = expectedPattern.replaceFirst("exact:", "");
-            if (!expectedExact.equals(actual)) {
-                System.out.println("expected " + actual + " to match "
-                        + expectedPattern);
-                return false;
-            }
-            return true;
-        }
-
-        String expectedGlob = expectedPattern.replaceFirst("glob:", "");
-        expectedGlob =
-                expectedGlob.replaceAll("([\\]\\[\\\\{\\}$\\(\\)\\|\\^\\+.])",
-                        "\\\\$1");
-
-        expectedGlob = expectedGlob.replaceAll("\\*", ".*");
-        expectedGlob = expectedGlob.replaceAll("\\?", ".");
-        if (!Pattern.compile(expectedGlob, Pattern.DOTALL).matcher(actual)
-                .matches()) {
-            System.out.println("expected \"" + actual + "\" to match glob \""
-                    + expectedPattern
-                    + "\" (had transformed the glob into regexp \""
-                    + expectedGlob + "\"");
-            return false;
-        }
-        return true;
+    public final void killProcess(final String serviceName) throws Exception {
+        String kill = "taskkill /F /IM ";
+        Runtime.getRuntime().exec(kill + serviceName);
     }
-
-    private static Boolean handleRegex(final String prefix,
-            final String expectedPattern, final String actual, final int flags) {
-        if (expectedPattern.startsWith(prefix)) {
-            String expectedRegEx =
-                    expectedPattern.replaceFirst(prefix, ".*") + ".*";
-            Pattern p = Pattern.compile(expectedRegEx, flags);
-            if (!p.matcher(actual).matches()) {
-                System.out.println("expected " + actual + " to match regexp "
-                        + expectedPattern);
-                return Boolean.FALSE;
-            }
-            return Boolean.TRUE;
-        }
-        return null;
-    }
-
+    
+    
     /**
-     * Compares two objects, but handles "regexp:" strings like HTML Selenese
+     * Replace xml special characters.
      * 
-     * @see #seleniumEquals(String, String)
-     * @return true if actual matches the expectedPattern, or false otherwise
+     * @param text
+     *            the text
+     * @return the string
      */
-    public static boolean seleniumEquals(final Object expected,
-            final Object actual) {
-        if (expected instanceof String && actual instanceof String) {
-            return seleniumEquals((String) expected, (String) actual);
-        }
-        return expected.equals(actual);
-    }
+    public final String replaceXMLSpecialCharacters(final String text) {
+        String replaced = text;
 
-    /** Asserts that two string arrays have identical string contents */
-    public static void assertEquals(final String[] s1, final String[] s2) {
-        String comparisonDumpIfNotEqual =
-                verifyEqualsAndReturnComparisonDumpIfNot(s1, s2);
-        if (comparisonDumpIfNotEqual != null) {
-            throw new AssertionError(comparisonDumpIfNotEqual);
-        }
+        return replaced.replaceAll("<", "&lt;").replaceAll(">", "&gt;")
+                .replaceAll("&", "&amp;").replaceAll("'", "&apos;")
+                .replaceAll("\"", "&quot;").replaceAll("»", "");
     }
 
     /**
-     * Asserts that two string arrays have identical string contents (fails at
-     * the end of the test, during tearDown)
+     * Gets the source lines.
+     * 
+     * @param stackTrace
+     *            the stack trace
+     * @return the source lines
      */
-    public void verifyEquals(final String[] s1, final String[] s2) {
-        String comparisonDumpIfNotEqual =
-                verifyEqualsAndReturnComparisonDumpIfNot(s1, s2);
-        if (comparisonDumpIfNotEqual != null) {
-            verificationErrors.append(comparisonDumpIfNotEqual);
-        }
-    }
+    public final String getSourceLines(final StackTraceElement[] stackTrace) {
+        StringBuilder stacktraceLines = new StringBuilder();
+        final int stackTraceIndex = 1;
+        for (int elementid = 0; elementid < stackTrace.length; elementid++) {
 
-    private static String verifyEqualsAndReturnComparisonDumpIfNot(
-            final String[] s1, final String[] s2) {
-        boolean misMatch = false;
-        if (s1.length != s2.length) {
-            misMatch = true;
-        }
-        for (int j = 0; j < s1.length; j++) {
-            if (!seleniumEquals(s1[j], s2[j])) {
-                misMatch = true;
-                break;
-            }
-        }
-        if (misMatch) {
-            return "Expected " + stringArrayToString(s1) + " but saw "
-                    + stringArrayToString(s2);
-        }
-        return null;
-    }
+            if (stackTrace[elementid].toString().indexOf("invoke0") != -1) {
 
-    private static String stringArrayToString(final String[] sa) {
-        StringBuffer sb = new StringBuffer("{");
-        for (int j = 0; j < sa.length; j++) {
-            sb.append(" ").append("\"").append(sa[j]).append("\"");
-        }
-        sb.append(" }");
-        return sb.toString();
-    }
-
-    private static String throwableToString(final Throwable t) {
-        StringWriter sw = new StringWriter();
-        PrintWriter pw = new PrintWriter(sw);
-        t.printStackTrace(pw);
-        return sw.toString();
-    }
-
-    public static String join(final String[] sa, final char c) {
-        StringBuffer sb = new StringBuffer();
-        for (int j = 0; j < sa.length; j++) {
-
-            sb.append(sa[j]);
-            if (j < sa.length - 1) {
-                sb.append(c);
+                stacktraceLines.append(stackTrace[elementid - stackTraceIndex])
+                        .append("|");
+                stacktraceLines.append(
+                        stackTrace[elementid - (stackTraceIndex + 1)]).append(
+                        "|");
+                stacktraceLines.append(stackTrace[elementid
+                        - (stackTraceIndex + 2)]);
             }
 
         }
-        return sb.toString();
+        return stacktraceLines.toString();
     }
+    
 
-    /** Like assertNotEquals, but fails at the end of the test (during tearDown) */
-    public void verifyNotEquals(final Object s1, final Object s2) {
-        try {
-            assertNotEquals(s1, s2);
-        } catch (AssertionError e) {
-            verificationErrors.append(throwableToString(e));
-        }
-    }
-
-    /** Like assertNotEquals, but fails at the end of the test (during tearDown) */
-    public void verifyNotEquals(final boolean s1, final boolean s2) {
-        try {
-            assertNotEquals(new Boolean(s1), new Boolean(s2));
-        } catch (AssertionError e) {
-            verificationErrors.append(throwableToString(e));
-        }
-    }
-
-    /** Asserts that two objects are not the same (compares using .equals()) */
-    public static void assertNotEquals(final Object obj1, final Object obj2) {
-        if (obj1.equals(obj2)) {
-            failure("did not expect values to be equal (" + obj1.toString()
-                    + ")");
-        }
-    }
-
+    /**
+     * Failure.
+     * 
+     * @param message
+     *            the message
+     */
     public static void failure(final Object message) {
         throw new AssertionError(message.toString());
     }
 
-    static public void assertTrue(final String message, final boolean condition) {
+    /**
+     * Assert true.
+     * 
+     * @param message
+     *            the message
+     * @param condition
+     *            the condition
+     */
+    public static void assertTrue(final String message, final boolean condition) {
         if (!condition) {
             failure(message);
-
-            /*
-             * ITestResult reult = new TestResult(); reult =
-             * Reporter.getCurrentTestResult();
-             * reult.setStatus(ITestResult.FAILURE);
-             * 
-             * System.out.println(reult.getMethod()+"   "+reult.getClass());
-             * //System.out.println(new Throwable(message).getStackTrace());
-             * //reult.setThrowable(new Throwable(message));
-             * 
-             * 
-             * Reporter.setCurrentTestResult(reult);
-             */
-
         }
     }
 
-    static public void assertTrue(final boolean condition) {
-        assertTrue(null, condition);
-    }
-
-    static public void assertFalse(final String message, final boolean condition) {
-        assertTrue(message, !condition);
-    }
-
-    static public void assertFalse(final boolean condition) {
-        assertTrue(null, !condition);
-    }
-
-    /** Asserts that two booleans are not the same */
-    public static void assertNotEquals(final boolean b1, final boolean b2) {
-        assertNotEquals(new Boolean(b1), new Boolean(b2));
-    }
-
-    /** Sleeps for the specified number of milliseconds */
-    public void pause(final int millisecs) {
+    /**
+     * Sleeps for the specified number of milliseconds.
+     * 
+     * @param millisecs
+     *            the millisecs
+     */
+    public final void pause(final int millisecs) {
         try {
             Thread.sleep(millisecs);
         } catch (InterruptedException e) {
+            e.printStackTrace();
         }
     }
 
     /**
      * Asserts that there were no verification errors during the current test,
-     * failing immediately if any are found
+     * failing immediately if any are found.
      */
-    public void checkForVerificationErrors() {
+    public final void checkForVerificationErrors() {
         String verificationErrorString = verificationErrors.toString();
         clearVerificationErrors();
         if (!"".equals(verificationErrorString)) {
@@ -615,26 +423,204 @@ public class SeleneseTestBaseVir {
         }
     }
 
-    /** Clears out the list of verification errors */
-    public void clearVerificationErrors() {
+    /** Clears out the list of verification errors. */
+    public final void clearVerificationErrors() {
         verificationErrors = new StringBuffer();
     }
 
-    /** checks for verification errors and stops the browser */
-    public void tearDown() throws Exception {
+    /**
+     * checks for verification errors and stops the browser.
+     * 
+     * @throws Exception
+     *             the exception
+     */
+    public final void tearDown() throws Exception {
         try {
             checkForVerificationErrors();
-        } finally {
-
+        } catch (Exception e) {
+            e.printStackTrace();
         }
     }
 
-    protected boolean isCaptureScreenShotOnFailure() {
+    /**
+     * Checks if is capture screen shot on failure.
+     * 
+     * @return true, if is capture screen shot on failure
+     */
+    protected final boolean isCaptureScreenShotOnFailure() {
         return captureScreenShotOnFailure;
     }
 
-    protected void setCaptureScreenShotOnFailure(
+    /**
+     * Sets the capture screen shot on failure.
+     * 
+     * @param captureScreetShotOnFailure
+     *            the new capture screen shot on failure
+     */
+    protected final void setCaptureScreenShotOnFailure(
             final boolean captureScreetShotOnFailure) {
         this.captureScreenShotOnFailure = captureScreetShotOnFailure;
+    }
+
+    /**
+     * @return the webDriverCapabilities
+     */
+    public static final DesiredCapabilities getWebDriverCapabilities() {
+        return webDriverCapabilities;
+    }
+
+    /**
+     * @param capabilities
+     *            the webDriverCapabilities to set
+     */
+    public static final void setWebDriverCapabilities(
+            final DesiredCapabilities capabilities) {
+        SeleneseTestBaseVir.webDriverCapabilities = capabilities;
+    }
+
+    /**
+     * @return the seleniumInstances
+     */
+    public final Map<String, WebDriver> getSeleniumInstances() {
+        return seleniumInstances;
+    }
+
+    /**
+     * @param seleniumInstancesMap
+     *            the seleniumInstances to set
+     */
+    public final void setSeleniumInstances(
+            final Map<String, WebDriver> seleniumInstancesMap) {
+        this.seleniumInstances = seleniumInstancesMap;
+    }
+
+    /**
+     * @param instanceName
+     *            the instanceName to put
+     * @param webDriver
+     *            the webDriver to put
+     */
+    public final void putSeleniumInstances(final String instanceName,
+            final WebDriver webDriver) {
+        this.seleniumInstances.put(instanceName, webDriver);
+    }
+
+    /**
+     * @return the seleniumInstanceName
+     */
+    public final String getSeleniumInstanceName() {
+        return seleniumInstanceName;
+    }
+
+    /**
+     * @param seleniumInstanceNameString
+     *            the seleniumInstanceNameString to set
+     */
+    public final void setSeleniumInstanceName(
+            final String seleniumInstanceNameString) {
+        this.seleniumInstanceName = seleniumInstanceNameString;
+    }
+
+    /**
+     * @return the defaultProfile
+     */
+    public static final FirefoxProfile getDefaultProfile() {
+        return defaultProfile;
+    }
+
+    /**
+     * @param defaultProfileFirefox
+     *            the defaultProfile to set
+     */
+    public static final void setDefaultProfile(
+            final FirefoxProfile defaultProfileFirefox) {
+        SeleneseTestBaseVir.defaultProfile = defaultProfileFirefox;
+    }
+
+    /**
+     * @return the log
+     */
+    public static final Logger getLog() {
+        return log;
+    }
+
+    /**
+     * @param logValue
+     *            the log to set
+     */
+    public static final void setLog(final Logger logValue) {
+        SeleneseTestBaseVir.log = logValue;
+    }
+
+    /**
+     * @return the databaseInstances
+     */
+    public final Map<String, Connection> getDatabaseInstances() {
+        return databaseInstances;
+    }
+
+    /**
+     * @param databaseInstancesMap
+     *            the databaseInstances to set
+     */
+    public final void setDatabaseInstances(
+            final Map<String, Connection> databaseInstancesMap) {
+        this.databaseInstances = databaseInstancesMap;
+    }
+
+    /**
+     * @param instanceName
+     *            the instanceName to put
+     * @param connection
+     *            the connection to put
+     */
+    public final void putDatabaseInstances(final String instanceName,
+            final Connection connection) {
+        this.databaseInstances.put(instanceName, connection);
+    }
+
+    /**
+     * @return the verificationErrors
+     */
+    public final StringBuffer getVerificationErrors() {
+        return verificationErrors;
+    }
+
+    /**
+     * @param verificationErrorsString
+     *            the verificationErrors to set
+     */
+    public final void setVerificationErrors(
+            final StringBuffer verificationErrorsString) {
+        this.verificationErrors = verificationErrorsString;
+    }
+
+    /**
+     * @return the thisIsWindows
+     */
+    public static final boolean isThisIsWindows() {
+        return THIS_IS_WINDOWS;
+    }
+
+    /**
+     * @return the browserString
+     */
+    public static final String getBrowserString() {
+        return browserString;
+    }
+
+    /**
+     * @return the driver
+     */
+    public final WebDriver getDriver() {
+        return driver;
+    }
+
+    /**
+     * @param driverObj
+     *            the driver to set
+     */
+    public final void setDriver(final WebDriver driverObj) {
+        this.driver = driverObj;
     }
 }

@@ -1,23 +1,13 @@
 /*
-* Copyright (c) 2005-2010, Virtusa Inc. (http://www.virtusa.com/) All Rights Reserved.
-* 
-* This file is part of the Virtusa Test Automation Framework project
-* Virtusa Inc. licenses this file to you under the Apache License,
-* Version 2.0 (the "License"); you may not use this file except
-* in compliance with the License.
-* 
-* You may obtain a copy of the License at
-*
-*http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing,
-* software distributed under the License is distributed on an
-* "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
-* KIND, either express or implied.  See the License for the
-* specific language governing permissions and limitations
-* under the License.
-* 
-*/
+ * Copyright 2004 ThoughtWorks, Inc. Licensed under the Apache License, Version
+ * 2.0 (the "License"); you may not use this file except in compliance with the
+ * License. You may obtain a copy of the License at
+ * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law
+ * or agreed to in writing, software distributed under the License is
+ * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied. See the License for the specific language
+ * governing permissions and limitations under the License.
+ */
 
 package com.thoughtworks.selenium;
 
@@ -38,63 +28,106 @@ import com.virtusa.isq.vtaf.runtime.DataTable;
 import com.virtusa.isq.vtaf.runtime.DataTablesParser;
 import com.virtusa.isq.vtaf.runtime.MetaDataTablesParser;
 
+/**
+ * The listener interface for receiving VTAFTest events. The class that is
+ * interested in processing a VTAFTest event implements this interface, and the
+ * object created with that class is registered with a component using the
+ * component's <code>addVTAFTestListener</code> method. When the VTAFTest event
+ * occurs, that object's appropriate method is invoked.
+ * 
+ * @see VTAFTestEvent
+ */
 public class VTAFTestListener implements IInvokedMethodListener {
 
-    public ReportBase reporter = new ReportBase();
-    static String browser = "";
-    public int dataIteration = 0;
-    public HashMap<String, DataTable> tables = null;
-    List tableHeaders = new ArrayList();
-    String prevDataProvider = "";
+    /** The reporter. */
+    private ReportBase reporter = new ReportBase();
+
+    /** The browser. */
+    private static String browser = "";
+
+    /** The data iteration. */
+    private int dataIteration = 0;
+
+    /** The tables. */
+    private HashMap<String, DataTable> tables = null;
+
+    /** The table headers. */
+    private List tableHeaders = new ArrayList();
+
+    /** The prev data provider. */
+    private String prevDataProvider = "";
 
     // @Override
-    public void onTestFailure(final ITestResult tr) {
+    /**
+     * On test failure.
+     * 
+     * @param tr
+     *            the tr
+     */
+    public final void onTestFailure(final ITestResult tr) {
 
-        System.out.println(tr.getTestName()
-                + "99999999999999999999999999999999999999999999999: FAILURE");
         endTestReporting("skipped");
 
     }
 
     // @Override
 
-    public void onTestSkipped(final ITestResult tr) {
-        System.out
-                .println("99999999999999999999999999999999999999999999999: SKIPPED");
+    /**
+     * On test skipped.
+     * 
+     * @param tr
+     *            the tr
+     */
+    public final void onTestSkipped(final ITestResult tr) {
+
         endTestReporting("failed");
 
     }
 
     // @Override
-    public void onTestSuccess(final ITestResult tr) {
-        System.out
-                .println("99999999999999999999999999999999999999999999999: SUCCESS");
+    /**
+     * On test success.
+     * 
+     * @param tr
+     *            the tr
+     */
+    public final void onTestSuccess(final ITestResult tr) {
+
         endTestReporting("passed");
 
     }
 
+    /**
+     * End test reporting.
+     * 
+     * @param testFailed
+     *            the test failed
+     */
     public void endTestReporting(final String testFailed) {
+
+        // reporter.endResultReporting(testFailed);
 
     }
 
+    /**
+     * After invocation.
+     * 
+     * @param method
+     *            the method
+     * @param result
+     *            the result
+     * @see org.testng.IInvokedMethodListener#afterInvocation(org.testng.IInvokedMethod,
+     *      org.testng.ITestResult)
+     */
     @Override
-    public void afterInvocation(final IInvokedMethod method,
+    public final void afterInvocation(final IInvokedMethod method,
             final ITestResult result) {
         if (method.isTestMethod()) {
             if (result.getStatus() == ITestResult.SKIP) {
-                System.out
-                        .println("99999999999999999999999999999999999999999999999"
-                                + method.toString() + ": SKIPPED");
                 endTestReporting("skipped");
             } else if (result.getStatus() == ITestResult.FAILURE) {
-                System.out
-                        .println("99999999999999999999999999999999999999999999999"
-                                + method.toString() + ": FAILURE");
                 endTestReporting("failed");
             } else if (result.getStatus() == ITestResult.SUCCESS) {
-                System.out
-                        .println("99999999999999999999999999999999999999999999999"
-                                + method.toString() + ": SUCCESS");
                 endTestReporting("passed");
             }
 
@@ -102,28 +135,35 @@ public class VTAFTestListener implements IInvokedMethodListener {
 
     }
 
+    /**
+     * Before invocation.
+     * 
+     * @param methodtest
+     *            the methodtest
+     * @param result
+     *            the result
+     * @see org.testng.IInvokedMethodListener#beforeInvocation(org.testng.IInvokedMethod,
+     *      org.testng.ITestResult)
+     */
     @Override
-    public void beforeInvocation(final IInvokedMethod methodtest,
+    public final void beforeInvocation(final IInvokedMethod methodtest,
             final ITestResult result) {
 
         if (methodtest.isTestMethod()) {
-            String dataString = "";
+            
             String dataProvider = "";
 
             Method method =
                     methodtest.getTestMethod().getConstructorOrMethod()
                             .getMethod();
-            Annotation testAnnot[] = method.getAnnotations();
+            Annotation[] testAnnot = method.getAnnotations();
             for (Annotation annot : testAnnot) {
 
                 if (annot instanceof Test) {
 
                     Test tAnnot = (Test) annot;
-                    System.out
-                            .println("Test annot 66666666666666666666666666666666   "
-                                    + tAnnot.getClass().getName());
                     dataProvider = tAnnot.dataProvider();
-                    if (prevDataProvider.equalsIgnoreCase("")
+                    if ("".equalsIgnoreCase(prevDataProvider)
                             || !(prevDataProvider
                                     .equalsIgnoreCase(dataProvider))) {
                         dataIteration = 0;
@@ -134,72 +174,73 @@ public class VTAFTestListener implements IInvokedMethodListener {
                 }
 
             }
-            if (dataProvider.indexOf(method.getName()) > -1) {
+            String methodName = method.getName();
+            if (dataProvider.indexOf(methodName) > -1) {
                 Object[][] dataset =
                         getDataTabaleMeta(dataProvider.substring(0,
-                                dataProvider.indexOf("_" + method.getName())));
-
-                System.out.println("Length=" + dataset.length
-                        + " | DataIteration =" + dataIteration);
+                                dataProvider.indexOf("_" + methodName)));
 
                 if (dataset.length > dataIteration) {
 
+                    StringBuilder dataStringBuilder = new StringBuilder();
                     for (int columns = 0; columns < dataset[dataIteration].length; columns++) {
 
-                        dataString =
-                                dataString + " |  " + tableHeaders.get(columns)
-                                        + "=" + dataset[dataIteration][columns]
-                                        + "";
-
+                        dataStringBuilder.append(" |  "
+                                + tableHeaders.get(columns) + "="
+                                + dataset[dataIteration][columns] + "");
                     }
                 }
             }
-            System.out.println("Invoking method dataset |="
-                    + method.getDeclaringClass().getCanonicalName() + "88888="
-                    + method.getName() + "88888888=" + browser + "88888888="
-                    + dataString + "  Data iteration =" + dataIteration);
             dataIteration++;
 
         }
 
     }
 
-    public Object[][] getDataTabale(final String tableName) {
+    /**
+     * Gets the data tabale.
+     * 
+     * @param tableName
+     *            the table name
+     * @return the data tabale
+     */
+    public final Object[][] getDataTabale(final String tableName) {
         DataTable table = getTable(tableName);
 
-        Object[][] retObjArr = this.getTableArray(table);
-        return (retObjArr);
-    }
-
-    public Object[][] getDataTabaleMeta(final String tableName) {
-        DataTable table = getTableMeta(tableName);
-        tableHeaders = table.getColumns();
-        Object[][] retObjArr = this.getTableArray(table);
-        return (retObjArr);
+        return this.getTableArray(table);
     }
 
     /**
-     * Retrieve the data table for the parameterized executin
-     * */
-    public DataTable getTable(final String name) {
+     * Gets the data tabale meta.
+     * 
+     * @param tableName
+     *            the table name
+     * @return the data tabale meta
+     */
+    public final Object[][] getDataTabaleMeta(final String tableName) {
+        DataTable table = getTableMeta(tableName);
+        tableHeaders = table.getColumns();
+        return this.getTableArray(table);
+    }
+
+    /**
+     * Retrieve the data table for the parameterized execution.
+     * 
+     * @param name
+     *            the name
+     * @return the table
+     */
+    public final DataTable getTable(final String name) {
         File file;
         if (tables == null) {
             File tempFile = new File("tempFile");
-            System.out.println("running location :"
-                    + tempFile.getAbsolutePath());
             if (tempFile.getAbsolutePath().contains("grid")) {
-
                 file = new File("data" + File.separator + "DataTables.xml");
-                System.out.println("Location of data file is :"
-                        + file.getAbsolutePath());
             } else {
-
                 file =
                         new File("grid" + File.separator
                                 + "selenium-grid-1.0.6" + File.separator
                                 + "data" + File.separator + "DataTables.xml");
-                System.out.println("Location of data file is :"
-                        + file.getAbsolutePath());
             }
             tables = DataTablesParser.parseTables(file);
         }
@@ -207,28 +248,25 @@ public class VTAFTestListener implements IInvokedMethodListener {
     }
 
     /**
-     * Retrieve the data table for the parameterized executin
-     * */
-    public DataTable getTableMeta(final String name) {
+     * Retrieve the data table for the parameterized execution.
+     * 
+     * @param name
+     *            the name
+     * @return the table meta
+     */
+    public final DataTable getTableMeta(final String name) {
         File file;
         if (tables == null) {
             File tempFile = new File("tempFile");
-            System.out.println("running location :"
-                    + tempFile.getAbsolutePath());
             if (tempFile.getAbsolutePath().contains("grid")) {
 
                 file =
                         new File("grid" + File.separator
                                 + "selenium-grid-1.0.6" + File.separator
                                 + "data" + File.separator + "DataTables.xml");
-                System.out.println("Location of data file is :"
-                        + file.getAbsolutePath());
             } else {
 
                 file = new File("data" + File.separator + "DataTables.xml");
-                System.out.println("Location of data file is :"
-                        + file.getAbsolutePath());
-
             }
             tables = MetaDataTablesParser.parseTables(file);
         }
@@ -236,10 +274,13 @@ public class VTAFTestListener implements IInvokedMethodListener {
     }
 
     /**
-     * read the DataTable and convert it to a two dimentional array
+     * read the DataTable and convert it to a two dimentional array.
      * 
-     * */
-    public Object[][] getTableArray(final DataTable table) {
+     * @param table
+     *            the table
+     * @return the table array
+     */
+    public final Object[][] getTableArray(final DataTable table) {
 
         Object[][] tabArray = null;
         Integer rowcount = table.getRowCount();
@@ -250,14 +291,101 @@ public class VTAFTestListener implements IInvokedMethodListener {
         for (int row = 0; row < rowcount; row++) {
             for (int col = 0; col < colcount; col++) {
                 tabArray[row][col] = table.get(row, col);
-                System.out.print(table.get(row, col) + "|");
             }
-            System.out.println();
-
         }
 
         return tabArray;
 
+    }
+
+    /**
+     * @return the reporter
+     */
+    public final ReportBase getReporter() {
+        return reporter;
+    }
+
+    /**
+     * @param reporterObj
+     *            the reporter to set
+     */
+    public final void setReporter(final ReportBase reporterObj) {
+        this.reporter = reporterObj;
+    }
+
+    /**
+     * @return the browser
+     */
+    public static final String getBrowser() {
+        return browser;
+    }
+
+    /**
+     * @param browserString
+     *            the browser to set
+     */
+    public static final void setBrowser(final String browserString) {
+        VTAFTestListener.browser = browserString;
+    }
+
+    /**
+     * @return the dataIteration
+     */
+    public final int getDataIteration() {
+        return dataIteration;
+    }
+
+    /**
+     * @param dataIterationNumber
+     *            the dataIteration to set
+     */
+    public final void setDataIteration(final int dataIterationNumber) {
+        this.dataIteration = dataIterationNumber;
+    }
+
+    /**
+     * @return the tables
+     */
+    public final HashMap<String, DataTable> getTables() {
+        return tables;
+    }
+
+    /**
+     * @param tablesMap
+     *            the tables to set
+     */
+    public final void setTables(final HashMap<String, DataTable> tablesMap) {
+        this.tables = tablesMap;
+    }
+
+    /**
+     * @return the tableHeaders
+     */
+    public final List getTableHeaders() {
+        return tableHeaders;
+    }
+
+    /**
+     * @param tableHeadersList
+     *            the tableHeaders to set
+     */
+    public final void setTableHeaders(final List tableHeadersList) {
+        this.tableHeaders = tableHeadersList;
+    }
+
+    /**
+     * @return the prevDataProvider
+     */
+    public final String getPrevDataProvider() {
+        return prevDataProvider;
+    }
+
+    /**
+     * @param prevDataProviderString
+     *            the prevDataProvider to set
+     */
+    public final void setPrevDataProvider(final String prevDataProviderString) {
+        this.prevDataProvider = prevDataProviderString;
     }
 
 }
