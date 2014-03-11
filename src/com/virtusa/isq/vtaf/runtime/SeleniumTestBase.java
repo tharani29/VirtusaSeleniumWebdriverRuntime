@@ -190,6 +190,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             }
 
             reportresult(true, "OPEN : " + url + "", "PASSED", url);
+        } catch(WebDriverException e) {
+            
+            String errorString = e.getMessage();
+            reportresult(true, "OPEN : " + url + "", "FAILED",
+                    "Cannot access the empty URL. URL : " + url + ". Actual Error : "
+                            + errorString);
+            checkTrue(false, true, "Cannot access the empty URL. URL : " + url + ". Actual Error : "
+                    + errorString);
         } catch (Exception e) {
             String errorString = e.getMessage();
             reportresult(true, "OPEN : " + url + "", "FAILED",
