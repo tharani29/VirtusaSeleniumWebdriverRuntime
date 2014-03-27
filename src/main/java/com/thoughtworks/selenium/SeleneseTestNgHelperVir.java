@@ -15,6 +15,7 @@ package com.thoughtworks.selenium;
 import java.awt.AWTException;
 import java.awt.Robot;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
@@ -105,6 +106,9 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
     /** The total execution time taken. */
     private long totalExecutionTimeTaken;
+    
+    /** Stores the time taken to each command. */
+    private static String logTimeCSVFileBuilder = "";
 
     /**
      * Sets the before test configuration for the test.
@@ -153,7 +157,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         initReporter();
         resultReporter.addNewTestExecution();
         getLogger(SeleneseTestNgHelperVir.class);
-
+        
         setRobot(new Robot());
 
         setProp(new Properties());
@@ -256,9 +260,11 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
         testPackageName =
                 this.getClass().getPackage().toString().split("package ")[1];
-
-        resultReporter.addNewTestCase(method.getName());
-
+        String testCaseName = method.getName();
+        resultReporter.addNewTestCase(testCaseName);
+        
+        appendToCSVFileBuilder("\n", testCaseName, "\n");
+        //logTimeCSVFileBuilder.append("\n").append(testCaseName).append("\n");
         startOfTestCase();
 
         log.info("Starting the test case..");
@@ -369,7 +375,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         log.info("Total Time taken to execute the commands : "
                 + totalExecutionTimeTaken + " ms");
         logTime("Total Time taken to execute the test case : ",
-                testcaseStartTime, getCurrentTime());
+                testcaseStartTime, getCurrentTime(), log);
 
         Map<String, WebDriver> seleniumInstances = getSeleniumInstances();
 
@@ -396,6 +402,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      */
     @AfterMethod(alwaysRun = true)
     public final void cleanupSessions() {
+        resultReporter.endTestReporting();
         setSeleniumInstances(new HashMap<String, WebDriver>());
         setDatabaseInstances(new HashMap<String, Connection>());
         endTestReporting(false);
@@ -416,6 +423,37 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         resultReporter.endTestReporting();
         super.tearDown();
         cleanDriverServerSessions();
+        generateTimeLogCSV();
+    }
+    
+    
+    /**
+     * Generates the log time CSV file in the target/logs folder. 
+     * 
+     */
+    private void generateTimeLogCSV() {
+        FileWriter writer = null;
+        Logger log = getLog();
+        try {
+            writer = new FileWriter("target" + File.separator + "logs" 
+                    + File.separator + "ExecutionTime.csv");
+            writer.append(logTimeCSVFileBuilder);
+            writer.flush();
+        } catch (IOException e) {
+            log.error(e);
+            e.printStackTrace();
+        } catch (Exception e) {
+            log.error(e);
+            e.printStackTrace();
+        } finally {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
     }
 
     /**
@@ -515,7 +553,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
                 break;
             }
         }
-        System.out.println(callingClassName);
         Class< ? > callingClass = null;
         try {
             callingClass = Class.forName(callingClassName);
@@ -528,12 +565,13 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
             log.info("Executing : " + callingClass.getName() + " : "
                     + callingMethod);
             currentMethod = callingMethod;
+            
         }
 
         log.info("Step : " + step + "\t|\tResult : " + result
                 + "\t|\tMessage : " + message);
 
-        logTime(step, getCommandStartTime(), getCurrentTime());
+        logTime(step, getCommandStartTime(), getCurrentTime(), log);
 
         reporter.reportResult(step, result, message);
 
@@ -607,24 +645,27 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      * Log time.
      * 
      * @param desc
-     *            the desc
+     *            the description
      * @param start
-     *            the start
+     *            the start date time
      * @param end
-     *            the end
+     *            the end time
+     * @param log
+     *            the log
      */
-    private void logTime(final String desc, final Date start, final Date end) {
-        Logger log = null;
-        try {
-            log = getLog();
+    private void logTime(final String desc, final Date start, final Date end, final Logger log) {
+        try {                      
             if (!desc.startsWith("PAUSE")) {
                 Long timeDiff = Math.abs(end.getTime() - start.getTime());
                 totalExecutionTimeTaken += timeDiff;
                 log.info("Time taken to execute " + desc + " " + timeDiff
                         + " ms");
+                appendToCSVFileBuilder(desc, ",", timeDiff, "\n");
+                //logTimeCSVFileBuilder.append(desc).append(',').append(timeDiff)
+                //        .append("\n");
             }
         } catch (Exception e) {
-            log.info(e.getMessage());
+           log.info(e.getMessage());
         }
     }
 
@@ -840,4 +881,19 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         SeleneseTestNgHelperVir.retryCount = retryCountInt;
     }
 
+    
+    /**
+     * Append to the csv log.
+     * 
+     * @param appendValues
+     *            objects to append
+     */
+    private static void appendToCSVFileBuilder(final Object... appendValues) {
+        StringBuilder builder = new StringBuilder();
+        for (Object currentAppendValue : appendValues) {
+            builder.append(currentAppendValue);
+            
+        }
+        logTimeCSVFileBuilder += builder.toString();
+    }
 }

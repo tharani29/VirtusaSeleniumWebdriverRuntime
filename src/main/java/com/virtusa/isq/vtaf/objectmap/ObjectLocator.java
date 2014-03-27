@@ -9,7 +9,7 @@
  * governing permissions and limitations under the License.
  */
 
-package com.virtusa.isq.vtaf.obectmap;
+package com.virtusa.isq.vtaf.objectmap;
 
 /**
  * The Class ObjectLocator.

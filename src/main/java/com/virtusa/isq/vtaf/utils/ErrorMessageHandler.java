@@ -10,8 +10,8 @@
  */
 
 package com.virtusa.isq.vtaf.utils;
-/*
 
+/*
  * 2.0 (the "License"); you may not use this file except in compliance with the
  * License. You may obtain a copy of the License at
  * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law
@@ -52,9 +52,8 @@ public class ErrorMessageHandler {
     private void initErrorMessages() {
         errorMessagePool = new HashMap<String, String>();
 
-        errorMessagePool
-                .put("Select Option",
-                        "SELECT command  :Element (<locator>) [<objectID>]: "
+        errorMessagePool.put("Select Option",
+                "SELECT command  :Element (<locator>) [<objectID>]: "
                         + "Selected Option <inputValue> not present");
         errorMessagePool
                 .put("Select Element",
@@ -65,14 +64,15 @@ public class ErrorMessageHandler {
         errorMessagePool
                 .put("Select Index Out of bound",
                         "SELECT :<locator> SELECT User input index is out of bound "
-                        + "( List Items: <actualOptions>, Input index: <inputValue>) ");
+                                + "( List Items: <actualOptions>, Input index: <inputValue>) ");
 
     }
 
     /**
      * Gets the select command error messages.
-     *
-     * @param category the category
+     * 
+     * @param category
+     *            the category
      * @return the select command error messages
      */
     public final String getSelectCommandErrorMessages(final String category) {

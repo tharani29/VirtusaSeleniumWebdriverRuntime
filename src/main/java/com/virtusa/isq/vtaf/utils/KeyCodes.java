@@ -10,8 +10,8 @@
  */
 
 package com.virtusa.isq.vtaf.utils;
-/*
 
+/*
  * 2.0 (the "License"); you may not use this file except in compliance with the
  * License. You may obtain a copy of the License at
  * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law
@@ -25,18 +25,17 @@ import java.awt.event.KeyEvent;
 import java.util.HashMap;
 import java.util.Map;
 
-
 /**
- * The Class KeyCodes. Holds the key codes which will be used across many command in the
- * runtime. Key codes are saved within a hash map and the key represents the
- * actual key combination of the keyboard. The hash map will be initialized at
- * the constructor of the key codes.
+ * The Class KeyCodes. Holds the key codes which will be used across many
+ * command in the runtime. Key codes are saved within a hash map and the key
+ * represents the actual key combination of the keyboard. The hash map will be
+ * initialized at the constructor of the key codes.
  */
 public class KeyCodes {
 
     /** The key codes hash map. */
     private Map<String, int[]> keyCodes;
-    
+
     /**
      * Instantiates a new key codes.
      */
@@ -45,20 +44,19 @@ public class KeyCodes {
     }
 
     /**
-     * Inits the key codes which will be used across many command in the runtime.
-     * Key codes are saved within a hash map and the 
-     * key represents the actual key combination of the keyboard. The hash map 
-     * will be initialized at the constructor of the key codes.
+     * Inits the key codes which will be used across many command in the
+     * runtime. Key codes are saved within a hash map and the key represents the
+     * actual key combination of the keyboard. The hash map will be initialized
+     * at the constructor of the key codes.
      * 
-     * For key code for simulating key 'a' pass the String "a"
-     * For key code for simulating key 'b' pass the String "a"
-     * For key code for simulating key 'c' pass the String "a"
-     * For key code for simulating key 'D' pass the String "D"
-     * For key code for simulating key 'E' pass the String "E"
-     * For key code for simulating key 'F' pass the String "F"
-     * For key code for simulating key 'alt+F4' pass the String "alt+F4
-     * For key code for simulating key 'shift+\t' pass the String "shift+\t"
-     * For key code for simulating key 'ctrl+o' pass the String "ctrl+o"
+     * For key code for simulating key 'a' pass the String "a" For key code for
+     * simulating key 'b' pass the String "a" For key code for simulating key
+     * 'c' pass the String "a" For key code for simulating key 'D' pass the
+     * String "D" For key code for simulating key 'E' pass the String "E" For
+     * key code for simulating key 'F' pass the String "F" For key code for
+     * simulating key 'alt+F4' pass the String "alt+F4 For key code for
+     * simulating key 'shift+\t' pass the String "shift+\t" For key code for
+     * simulating key 'ctrl+o' pass the String "ctrl+o"
      * 
      */
     private void init() {
@@ -211,17 +209,17 @@ public class KeyCodes {
         keyCodes.put("shift+\t", new int[] {KeyEvent.VK_SHIFT, KeyEvent.VK_TAB});
         keyCodes.put("ctrl+o", new int[] {KeyEvent.VK_CONTROL, KeyEvent.VK_O});
     }
-    
+
     /**
-     * Gets the key codes for the given character.
-     * Returns the key code array for the given key combination.
-     *
-     * @param character the character
+     * Gets the key codes for the given character. Returns the key code array
+     * for the given key combination.
+     * 
+     * @param character
+     *            the character
      * @return the key codes
      */
     public final int[] getKeyCodes(final String character) {
         return keyCodes.get(character);
-    } 
+    }
 
-    
 }

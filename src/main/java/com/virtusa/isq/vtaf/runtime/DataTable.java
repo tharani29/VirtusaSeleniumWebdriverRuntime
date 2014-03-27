@@ -30,7 +30,31 @@ public class DataTable {
 
     /** The columns. */
     private ArrayList<String> columns = new ArrayList<String>();
+    
+    /** Data types of the columns. */
+    private ArrayList<String> dataTypes = new ArrayList<String>();
 
+    /**
+     * Adds the column data type.
+     * 
+     * @param type
+     *            the column data type
+     */
+    public final void addDataTypes(final String type) {
+        this.dataTypes.add(type);
+    }
+    
+    /**
+     * Gets the column data type.
+     * 
+     * @param index
+     *            the index of column data type
+     * @return the data type
+     */
+    public final String getDataType(final int index) {
+        return this.dataTypes.get(index);
+    }
+    
     /**
      * Adds the column.
      * 
@@ -187,7 +211,34 @@ public class DataTable {
      * @return the string
      */
     public final String stringValue(final int row, final String column) {
-        return (this.get(row, column));
+        return (String) (this.get(row, column));
     }
+    
+    /**
+     * Integer value.
+     * 
+     * @param row
+     *            the row
+     * @param column
+     *            the column
+     * @return the string
+     */
+    public final int intValue(final int row, final int column) {
+        return Integer.parseInt(this.get(row, column));
+    }
+    
+    /**
+     * Boolean value.
+     * 
+     * @param row
+     *            the row
+     * @param column
+     *            the column
+     * @return the string
+     */
+    public final boolean booleanValue(final int row, final int column) {
+        return Boolean.parseBoolean(this.get(row, column));
+    }
+    
 
 }

@@ -37,6 +37,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Properties;
+import java.util.Random;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.util.regex.Matcher;
@@ -44,10 +45,12 @@ import java.util.regex.Pattern;
 
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.log4j.Logger;
 import org.openqa.selenium.By;
 import org.openqa.selenium.ElementNotVisibleException;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.NoAlertPresentException;
+import org.openqa.selenium.NoSuchElementException;
 import org.openqa.selenium.OutputType;
 import org.openqa.selenium.StaleElementReferenceException;
 import org.openqa.selenium.TakesScreenshot;
@@ -56,7 +59,9 @@ import org.openqa.selenium.WebDriver.TargetLocator;
 import org.openqa.selenium.WebDriverException;
 import org.openqa.selenium.WebElement;
 import org.openqa.selenium.interactions.Actions;
+import org.openqa.selenium.support.ui.FluentWait;
 import org.openqa.selenium.support.ui.Select;
+import org.openqa.selenium.support.ui.Wait;
 import org.sikuli.api.DesktopScreenRegion;
 import org.sikuli.api.ImageTarget;
 import org.sikuli.api.ScreenRegion;
@@ -64,40 +69,70 @@ import org.sikuli.api.Target;
 import org.testng.ITestResult;
 import org.testng.Reporter;
 
-import sun.reflect.generics.reflectiveObjects.NotImplementedException;
-
+import com.google.common.base.Function;
 import com.thoughtworks.selenium.SeleneseTestBaseVir;
 import com.thoughtworks.selenium.SeleneseTestNgHelperVir;
-import com.virtusa.isq.vtaf.obectmap.ObjectLocator;
-import com.virtusa.isq.vtaf.obectmap.ObjectMap;
+import com.virtusa.isq.vtaf.objectmap.ObjectLocator;
+import com.virtusa.isq.vtaf.objectmap.ObjectMap;
 import com.virtusa.isq.vtaf.utils.ErrorMessageHandler;
 import com.virtusa.isq.vtaf.utils.KeyCodes;
 import com.virtusa.isq.vtaf.utils.PropertyHandler;
 
+/**
+ * The Class SeleniumTestBase.
+ */
 public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
+    /** The clip board. */
     private Clipboard clipboard = null;
 
+    /**
+     * The Enum TableValidationType.
+     */
     public static enum TableValidationType {
-        COLCOUNT, ROWCOUNT, TABLEDATA, RELATIVE, TABLECELL
+        
+        /** The colcount. */
+        COLCOUNT,
+        /** The rowcount. */
+        ROWCOUNT,
+        /** The tabledata. */
+        TABLEDATA,
+        /** The relative. */
+        RELATIVE,
+        /** The tablecell. */
+        TABLECELL
     };
 
+    /**
+     * The Enum WindowValidationType.
+     */
     public static enum WindowValidationType {
-        WINDOWPRESENT, CHECKTITLE
+
+        /** The windowpresent. */
+        WINDOWPRESENT,
+        /** The checktitle. */
+        CHECKTITLE
     }
 
-    private static final int WAITTIME = 1000;
-    private static final int RETRY_INTERVAL = 1000;
+    /** The retry interval. */
+    private int retryInterval;
+    
+    /** The tables. */
     private HashMap<String, DataTable> tables = null;
-    private String identifire = "";
+    
+    /** The identifire. */
+    private String locatorIdentifire = "";
 
-
-    // SeleniumWD
-    // DB Connection
-    // Image recognition quality and rotation degree
-    private static double maxRecQuality = 0.7;
-    private static double minRecQuality = 0.5;
-    private static int rotationDegree = 90;
+    /**
+     * The Constructor.
+     */
+    public SeleniumTestBase() {
+        super();
+        PropertyHandler propHandler = new PropertyHandler("runtime.properties");
+        retryInterval =
+                Integer.parseInt(propHandler
+                        .getRuntimeProperty("RETRY_INTERVAL"));
+    }
 
     /**
      * Opens an URL in the test frame. This accepts both relative and absolute
@@ -109,45 +144,30 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * (Same Origin Policy). If you need to open an URL on another domain, use
      * the Selenium Server <br>
      * to start a new browser session on that domain.
-     * 
-     * @param objectName
-     *            : Logical name of the object
-     * @param waitTime
-     *            : Time to wait for open command to complete
-     * @param identifire
-     *            : identifire is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifire</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * 
-     * */
+     *
+     * @param objectName            : Logical name of the object
+     * @param waitTime            : Time to wait for open command to complete
+     */
 
-    public void open(final String objectName, final String waitTime) {
+    public final void open(final String objectName, final String waitTime) {
         open(objectName, "", waitTime);
-    }    
-    public void open(final String objectName, final String identifier,
+    }
+
+    /**
+     * Open.
+     *
+     * @param objectName the object name
+     * @param identifier the identifier
+     * @param waitTime the wait time
+     */
+    public final void open(final String objectName, final String identifier,
             final String waitTime) {
 
         String url = ObjectMap.getResolvedSearchPath(objectName, identifier);
         ObjectLocator locator = new ObjectLocator(url, identifier, url);
         doOpen(locator, waitTime);
     }
-    
+
     /**
      * Opens an URL in the test frame. This accepts both relative and absolute
      * URLs. The "open" command <br>
@@ -165,13 +185,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      *            : time to wait till the page is loaded.
      * 
      * */
-    public void doOpen(final ObjectLocator locator, final String waitTime) {
+    private void doOpen(final ObjectLocator locator, final String waitTime) {
         String url = "";
         WebDriver driver = getDriver();
         try {
             url = locator.getActualLocator();
             if ("default".equalsIgnoreCase(url)) {
-                PropertyHandler propertyHandler = new PropertyHandler("runtime.properties");
+                PropertyHandler propertyHandler =
+                        new PropertyHandler("runtime.properties");
                 url = propertyHandler.getRuntimeProperty("DEFAULT_URL");
                 if ("".equals(url)) {
                     throw new WebDriverException("Empty URL : " + url);
@@ -190,14 +211,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             }
 
             reportresult(true, "OPEN : " + url + "", "PASSED", url);
-        } catch(WebDriverException e) {
-            
+        } catch (WebDriverException e) {
+
             String errorString = e.getMessage();
             reportresult(true, "OPEN : " + url + "", "FAILED",
-                    "Cannot access the empty URL. URL : " + url + ". Actual Error : "
-                            + errorString);
-            checkTrue(false, true, "Cannot access the empty URL. URL : " + url + ". Actual Error : "
-                    + errorString);
+                    "Cannot access the empty URL. URL : " + url
+                            + ". Actual Error : " + errorString);
+            checkTrue(false, true, "Cannot access the empty URL. URL : " + url
+                    + ". Actual Error : " + errorString);
         } catch (Exception e) {
             String errorString = e.getMessage();
             reportresult(true, "OPEN : " + url + "", "FAILED",
@@ -209,13 +230,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     }
 
+    /**
+     * Check null object.
+     *
+     * @param obj the obj
+     * @param command the command
+     * @return the string
+     */
     private String checkNullObject(final Object obj, final String command) {
         String value = null;
         try {
             value = obj.toString();
         } catch (NullPointerException e) {
-            reportresult(true, command+" command:", "FAILED",
-                    command+" command: Invalid input. cannot use null as input");
+            reportresult(true, command + " command:", "FAILED", command
+                    + " command: Invalid input. cannot use null as input");
             checkTrue(false, true,
                     "STORE command: Invalid input. cannot use null as input");
         }
@@ -232,34 +260,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * (Same Origin Policy). If you need to open an URL on another domain, use
      * the Selenium Server <br>
      * to start a new browser session on that domain.
-     * 
-     * @param url
-     *            : Logical name of the object
-     * 
-     * @param identifire
-     *            : identifire is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifire</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * 
-     * */
+     *
+     * @param url            : Logical name of the object
+     * @param identifier the identifier
+     * @param waitTime the wait time
+     */
 
-    public void navigateToURL(final String url, final String identifier,
+    public final void navigateToURL(final String url, final String identifier,
             final String waitTime) {
 
         String actualURL = ObjectMap.getResolvedSearchPath(url, identifier);
@@ -268,18 +275,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         doNavigateToURL(locator, waitTime);
     }
 
-    public void navigateToURL(final String url, final String waitTime) {
+    /**
+     * Navigate to url.
+     *
+     * @param url the url
+     * @param waitTime the wait time
+     */
+    public final void navigateToURL(final String url, final String waitTime) {
 
         navigateToURL(url, "", waitTime);
     }
-
-    /*
-     * public void navigateToURL(String url, String identifire, String waitTime)
-     * throws Exception {
-     * 
-     * this.identifire = identifire; navigateToURL(url, waitTime);
-     * this.identifire = ""; }
-     */
 
     /**
      * Opens an URL in a new test frame. This accepts both relative and absolute
@@ -291,12 +296,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * (Same Origin Policy). If you need to open an URL on another domain, use
      * the Selenium Server <br>
      * to start a new browser session on that domain.
-     * 
-     * @param url
-     *            : url of the openning page
-     * 
-     **/
-    public void doNavigateToURL(final ObjectLocator locator,
+     *
+     * @param locator the locator
+     * @param waitTime the wait time
+     */
+    private void doNavigateToURL(final ObjectLocator locator,
             final String waitTime) {
         String url = "";
         WebDriver driver = getDriver();
@@ -307,10 +311,10 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             if (url.toLowerCase(Locale.getDefault()).startsWith("openwindow=")) {
 
                 Set<String> oldWindowHandles = getAllWindows();
-                String URL = url.substring(url.indexOf('=') + 1, url.length());
+                String actualUrl = url.substring(url.indexOf('=') + 1, url.length());
 
                 JavascriptExecutor js = (JavascriptExecutor) driver;
-                js.executeScript("window.open('" + URL + "', '_newWindow');");
+                js.executeScript("window.open('" + actualUrl + "', '_newWindow');");
                 super.pause(Integer.parseInt(waitTime));
 
                 Set<String> newWindowHandles = getAllWindows();
@@ -342,38 +346,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * ClickAt is capable of perform clicking on a relative location to the
      * specified element. use locator to specify the respective X,Y coordinates
      * to click
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
      *            scripter
-     * @param coordinates
-     *            : X,Y coordinates of the position to be clicked with respect
-     *            to the element (i.e. - 10,20)
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
+     * @param identifier the identifier
+     * @param coordinateString the coordinate string
+     */
 
-    public void clickAt(final String objectName, final String identifier,
+    public final void clickAt(final String objectName, final String identifier,
             final String coordinateString) {
 
         String actualLocator =
@@ -383,17 +363,15 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         doClickAt(locator, coordinateString);
     }
 
-    public void clickAt(final String objectName, final String coordinateString) {
+    /**
+     * Click at.
+     *
+     * @param objectName the object name
+     * @param coordinateString the coordinate string
+     */
+    public final void clickAt(final String objectName, final String coordinateString) {
         clickAt(objectName, "", coordinateString);
     }
-
-    /*
-     * public void clickAt(String objectName, String identifire, String
-     * coordinateString) {
-     * 
-     * this.identifire = identifire; clickAt(objectName, coordinateString);
-     * this.identifire = ""; }
-     */
 
     /**
      * Clicks on a link, button, checkbox or radio button. If the click action
@@ -402,24 +380,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * ClickAt is capable of perform clicking on a relative location to the
      * specified element. use locator to specify the respective X,Y coordinates
      * to click
-     * 
-     * @param locator
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param locator            : Logical name of the web element assigned by the automation
      *            scripter
-     * @param coordinates
-     *            : X,Y coordinates of the position to be clicked with respect
-     *            to the element (i.e. - 10,20)
-     * 
-     * 
-     * */
+     * @param coordinateString the coordinate string
+     */
 
-    public void doClickAt(final ObjectLocator locator,
+    private void doClickAt(final ObjectLocator locator,
             final String coordinateString) {
         String objectID = "";
         int counter = getRetryCount();
         int xOffset = 0;
         int yOffset = 0;
         WebDriver driver = getDriver();
+        String objectName = locator.getLogicalName();
         try {
             // Retrieve the correct object locator from the object map
             objectID = locator.getActualLocator();
@@ -439,15 +413,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             } catch (Exception e) {
 
                 e.printStackTrace();
-
-                reportresult(true, "CLICKAT :" + locator + "", "FAILED",
+                reportresult(true, "CLICKAT :" + objectName + "", "FAILED",
                         "CLICKAT coordinate string (" + coordinateString
-                                + ") for :Element (" + locator + ") ["
+                                + ") for :Element (" + objectName + ") ["
                                 + objectID + "] is invalid");
 
                 checkTrue(false, true, "CLICKAT coordinate string ("
-                        + coordinateString + ") " + "for :Element (" + locator
-                        + ") [" + objectID + "] is invalid");
+                        + coordinateString + ") " + "for :Element ("
+                        + objectName + ") [" + objectID + "] is invalid");
             }
             /*
              * START DESCRIPTION following while loop was added to make the
@@ -470,25 +443,26 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     clickAt.build().perform();
                     // if not exception is called consider and report the result
                     // as passed
-                    reportresult(true, "CLICKAT :" + locator + "", "PASSED", "");
+                    reportresult(true, "CLICKAT :" + locator.getLogicalName()
+                            + "", "PASSED", "");
                     // if the testcase passed move out from the loop
                     break;
                 } catch (StaleElementReferenceException staleElementException) {
 
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    
-                    pause(RETRY_INTERVAL);
+
+                    pause(retryInterval);
                     if (!(counter > 0)) {
 
                         e.printStackTrace();
-                        reportresult(true, "CLICKAT :" + locator + "",
+                        reportresult(true, "CLICKAT :" + objectName + "",
                                 "FAILED",
                                 "CLICKAT command cannot access Element ("
                                         + locator + ") [" + objectID + "] ");
                         checkTrue(false, true,
                                 "CLICKAT command cannot access Element ("
-                                        + locator + ") [" + objectID + "] ");
+                                        + objectName + ") [" + objectID + "] ");
                     }
                 }
             }
@@ -497,20 +471,19 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              */
 
         } catch (Exception e) {
-            
 
             e.printStackTrace();
             /*
              * VTAF result reporter call
              */
-            reportresult(true, "CLICKAT :" + locator + "", "FAILED",
-                    "CLICKAT command  :Element (" + locator + ") [" + objectID
-                            + "] not present");
+            reportresult(true, "CLICKAT :" + objectName + "", "FAILED",
+                    "CLICKAT command  :Element (" + objectName + ") ["
+                            + objectID + "] not present");
 
             /*
              * VTAF specific validation framework reporting
              */
-            checkTrue(false, true, "CLICKAT command  :Element (" + locator
+            checkTrue(false, true, "CLICKAT command  :Element (" + objectName
                     + ") [" + objectID + "] not present");
         }
 
@@ -520,63 +493,45 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * Clicks on a link, button, checkbox or radio button. If the click action
      * causes a new page to load (like a link usually does), call
      * waitForPageToLoad. <br>
-     * 
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
      *            scripter
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    public void click(final String objectName, final String identifire) {
+     * @param identifier the identifier
+     */
 
-        this.identifire = identifire;
-        click(objectName);
-        this.identifire = "";
+    public final void click(final String objectName, final String identifier) {
+
+        String actualLocator =
+                ObjectMap.getObjectSearchPath(objectName, identifier);
+        ObjectLocator locator =
+                new ObjectLocator(objectName, identifier, actualLocator);
+        doClick(locator);
+    }
+
+    /**
+     * Click.
+     *
+     * @param objectName the object name
+     */
+    public final void click(final String objectName) {
+        click(objectName, "");
     }
 
     /**
      * Clicks on a link, button, checkbox or radio button. If the click action
      * causes a new page to load (like a link usually does), call
      * waitForPageToLoad. <br>
-     * 
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
-     *            scripter
-     * 
-     * 
-     * 
-     **/
+     *
+     * @param locator the locator
+     */
 
-    public void click(final String objectName) {
+    private void doClick(final ObjectLocator locator) {
         String objectID = "";
         int counter = getRetryCount();
         WebDriver driver = getDriver();
         try {
             // Retrieve the correct object locator from the object map
-            objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+            objectID = locator.getActualLocator();
             // first verify whether the element is present in the current web
             // page
             checkForNewWindowPopups();
@@ -600,8 +555,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     element.click();
                     // if not exception is called consider and report the result
                     // as passed
-                    reportresult(true, "CLICK :" + objectName + "", "PASSED",
-                            "");
+                    reportresult(true, "CLICK :" + locator.getLogicalName()
+                            + "", "PASSED", "");
                     // if the test case passed move out from the loop
                     break;
                 } catch (StaleElementReferenceException staleElementException) {
@@ -609,11 +564,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     element = checkElementPresence(objectID);
                 } catch (ElementNotVisibleException ex) {
                     try {
-                        JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
+                        JavascriptExecutor jsExecutor =
+                                (JavascriptExecutor) driver;
                         jsExecutor.executeScript("arguments[0].click();",
                                 element);
-                        reportresult(true, "CLICK :" + objectName + "",
-                                "PASSED", "");
+                        reportresult(true, "CLICK :" + locator.getLogicalName()
+                                + "", "PASSED", "");
                         break;
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -621,8 +577,9 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     }
 
                 } catch (Exception e) {
-                    
-                    pause(RETRY_INTERVAL);
+
+                    pause(retryInterval);
+                    String objectName = locator.getLogicalName();
                     if (!(counter > 0)) {
 
                         e.printStackTrace();
@@ -641,9 +598,9 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              */
 
         } catch (Exception e) {
-            
 
             e.printStackTrace();
+            String objectName = locator.getLogicalName();
             /*
              * VTAF result reporter call
              */
@@ -662,43 +619,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     /**
      * Stores a value in a given element property and return it as a string
-     * value
-     * 
-     * @param objectName
-     *            logical name of the object
-     * @param component
-     *            Component specification string <br>
+     * value.
+     *
+     * @param objectName            logical name of the object
+     * @param identifier the identifier
+     * @param component            Component specification string <br>
      *            Following is the way user needs to use this parameter<br>
      *            to store a text of an elemt TEXT: to verify a value of an
      *            element VALUE: to get a value of an attribute ATTR:<name of
-     *            the attribute> *
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    
-    public String getStringProperty(final String objectName, final String identifier,
-            final String component) {
+     *            the attribute/> *
+     * @return the string property
+     */
+
+    public final String getStringProperty(final String objectName,
+            final String identifier, final String component) {
 
         String actualLocator =
                 ObjectMap.getObjectSearchPath(objectName, identifier);
@@ -707,28 +641,34 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         return doGetStringProperty(locator, component);
     }
 
-    public String getStringProperty(final String objectName, final String component) {
+    /**
+     * Gets the string property.
+     *
+     * @param objectName the object name
+     * @param component the component
+     * @return the string property
+     */
+    public final String getStringProperty(final String objectName,
+            final String component) {
         return getStringProperty(objectName, "", component);
     }
-    
+
     /**
      * Stores a value in a given element property and return it as a string
-     * value
-     * 
-     * @param locator
-     *            logical name of the object
-     * @param component
-     *            Component specification string <br>
+     * value.
+     *
+     * @param locator            logical name of the object
+     * @param component            Component specification string <br>
      *            Following is the way user needs to use this parameter<br>
      *            to store a text of an elemt TEXT: to verify a value of an
      *            element VALUE: to get a value of an attribute ATTR:<name of
-     *            the attribute> *
-     * 
-     * 
-     * */
+     *            the attribute/> *
+     * @return the string
+     */
 
-    public String doGetStringProperty(final ObjectLocator locator,
+    private String doGetStringProperty(final ObjectLocator locator,
             final String component) {
+
         
         String returnValue = "";
         // retrieve the actual object ID from object repository
@@ -740,19 +680,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             WebElement element = checkElementPresence(objectID);
             if (component.startsWith("TEXT:")) {
 
-                returnValue = getVarPropertyTextValue(locator, element, component);
+                returnValue =
+                        getVarPropertyTextValue(locator, element, component);
 
             } else if (component.startsWith("VALUE:")) {
 
                 returnValue = element.getAttribute("value");
 
-                reportresult(true, "SET VARIABLE PROPERTY :" + locator.getLogicalName() + "",
-                        "PASSED", "Object value = " + returnValue);
+                reportresult(true,
+                        "SET VARIABLE PROPERTY :" + locator.getLogicalName()
+                                + "", "PASSED", "Object value = " + returnValue);
             } else if (component.startsWith("ATTR:")) {
 
-                returnValue = getVarPropertyAttributeValue(locator, element, component);
+                returnValue =
+                        getVarPropertyAttributeValue(locator, element,
+                                component);
             }
-            
+
         } catch (Exception e) {
             /*
              * after the retry amount, if still the object is not found, report
@@ -761,18 +705,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              * element, report object not found
              */
             if (e.getMessage().startsWith("Attribute")) {
-                    reportresult(true, "SET VARIABLE PROPERTY :" + locator
-                            + "." + component.substring(5), "FAILED",
-                            " command setvarProperty()  :Atrribute ("
-                                    + component.substring(5) + ")of  ["
-                                    + locator + "] not present");
-                    checkTrue(false, true,
-                            " command setvarProperty()  :Atrribute ("
-                                    + component.substring(5) + ")of  ["
-                                    + locator + "] not present");
-            }else if (e.getMessage().startsWith("Element")) {
+                reportresult(
+                        true,
+                        "SET VARIABLE PROPERTY :" + locator + "."
+                                + component,
+                        "FAILED",
+                        " command setvarProperty()  :Atrribute ("
+                                + component + ")of  [" + locator
+                                + "] not present");
+                checkTrue(
+                        false,
+                        true,
+                        " command setvarProperty()  :Atrribute ("
+                                + component + ")of  [" + locator
+                                + "] not present");
+            } else if (e.getMessage().startsWith("Element")) {
                 reportresult(true, "SET VARIABLE PROPERTY :" + locator + "."
-                        + component.substring(5), "FAILED",
+                        + component, "FAILED",
                         " command setvarProperty()  :Element (" + locator
                                 + ") [" + objectID + "] not present");
                 checkTrue(false, true, " command setvarProperty()  :Element ("
@@ -781,12 +730,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
         return returnValue;
     }
-    
-    
-    private String getVarPropertyAttributeValue(final ObjectLocator locator, final WebElement webElement, final String component) throws Exception{
+
+    /**
+     * Gets the var property attribute value.
+     *
+     * @param locator the locator
+     * @param webElement the web element
+     * @param component the component
+     * @return the var property attribute value
+     * @throws Exception the exception
+     */
+    private String getVarPropertyAttributeValue(final ObjectLocator locator,
+            final WebElement webElement, final String component)
+            throws Exception {
         int counter = getRetryCount();
         WebElement element = webElement;
         String returnValue = null;
+        final int compSubstrIndex = 5;
         /*
          * START DESCRIPTION following for loop was added to make the
          * command more consistent try the command for give amount of
@@ -803,16 +763,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 counter--;
 
                 returnValue =
-                        validateObjectProperty(element, component.substring(5));
-                reportresult(true, "SET VARIABLE PROPERTY :"
-                        + locator.getLogicalName() + "." + component.substring(5),
-                        "PASSED", "Object value = " + returnValue);
+                        validateObjectProperty(element, component.substring(compSubstrIndex));
+                reportresult(true,
+                        "SET VARIABLE PROPERTY :" + locator.getLogicalName()
+                                + "." + component.substring(compSubstrIndex), "PASSED",
+                        "Object value = " + returnValue);
                 break;
             } catch (StaleElementReferenceException staleElementException) {
 
                 element = checkElementPresence(locator.getActualLocator());
             } catch (Exception e) {
-                pause(RETRY_INTERVAL);
+                pause(retryInterval);
                 /*
                  * after the retry amout, if still the object is not
                  * found, report the failure error will be based on the
@@ -822,29 +783,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                  */
                 if (!(counter > 0)) {
                     if (e.getMessage().startsWith("Attribute")) {
-                        reportresult(true,
-                                "SET VARIABLE PROPERTY :" + locator
-                                        + "." + component.substring(5),
-                                "FAILED",
+                        reportresult(true, "SET VARIABLE PROPERTY :" + locator
+                                + "." + component.substring(compSubstrIndex), "FAILED",
                                 " command setvarProperty()  :Atrribute ("
-                                        + component.substring(5)
-                                        + ")of  [" + locator.getLogicalName()
+                                        + component.substring(compSubstrIndex) + ")of  ["
+                                        + locator.getLogicalName()
                                         + "] not present");
                         checkTrue(false, true,
                                 " command setvarProperty()  :Atrribute ("
-                                        + component.substring(5)
-                                        + ")of  [" + locator
-                                        + "] not present");
+                                        + component.substring(compSubstrIndex) + ")of  ["
+                                        + locator + "] not present");
                     }
 
-                }
-                if (e.getMessage().startsWith("Element")) {
+                } else if (e.getMessage().startsWith("Element")) {
                     String logicalName = locator.getLogicalName();
                     String actualLocator = locator.getActualLocator();
-                    reportresult(true,
-                            "SET VARIABLE PROPERTY :" + logicalName
-                                    + "." + component.substring(5),
-                            "FAILED",
+                    reportresult(true, "SET VARIABLE PROPERTY :" + logicalName
+                            + "." + component.substring(compSubstrIndex), "FAILED",
                             " command setvarProperty()  :Element ("
                                     + logicalName + ") [" + actualLocator
                                     + "] not present");
@@ -860,40 +815,55 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
          */
         return returnValue;
     }
-    
-    private String getVarPropertyTextValue(final ObjectLocator locator, final WebElement element, final String component) {
+
+    /**
+     * Gets the var property text value.
+     *
+     * @param locator the locator
+     * @param element the element
+     * @param component the component
+     * @return the var property text value
+     */
+    private String getVarPropertyTextValue(final ObjectLocator locator,
+            final WebElement element, final String component) {
         String returnValue;
-        if (component.split(":").length == 3) {
+        final int componentAttributes = 3;
+        if (component.split(":").length == componentAttributes) {
             returnValue = element.getText();
             if (component.split(":")[1].contains("-")) {
                 returnValue =
-                        returnValue.substring(Integer
-                                .parseInt(component.split(":")[1]
-                                        .split("-")[0]), Integer
-                                .parseInt(component.split(":")[1]
+                        returnValue.substring(Integer.parseInt(component
+                                .split(":")[1].split("-")[0]),
+                                Integer.parseInt(component.split(":")[1]
                                         .split("-")[1]));
-                reportresult(true, "SET VARIABLE PROPERTY :"
-                        + locator.getLogicalName() + "", "PASSED", "Object value = "
-                        + returnValue);
+                reportresult(true,
+                        "SET VARIABLE PROPERTY :" + locator.getLogicalName()
+                                + "", "PASSED", "Object value = " + returnValue);
             } else {
 
                 returnValue =
-                        returnValue.substring(Integer
-                                .parseInt(component.split(":")[1]));
-                reportresult(true, "SET VARIABLE PROPERTY :"
-                        + locator.getLogicalName() + "", "PASSED", "Object value = "
-                        + returnValue);
+                        returnValue.substring(Integer.parseInt(component
+                                .split(":")[1]));
+                reportresult(true,
+                        "SET VARIABLE PROPERTY :" + locator.getLogicalName()
+                                + "", "PASSED", "Object value = " + returnValue);
             }
         } else {
             returnValue = element.getText();
 
-            reportresult(true, "SET VARIABLE PROPERTY :" + locator.getLogicalName()
-                    + "", "PASSED", "Object value = " + returnValue);
+            reportresult(true,
+                    "SET VARIABLE PROPERTY :" + locator.getLogicalName() + "",
+                    "PASSED", "Object value = " + returnValue);
         }
         return returnValue;
     }
 
-    public void fail(final Object message) {
+    /**
+     * Fail.
+     *
+     * @param message the message
+     */
+    public final void fail(final Object message) {
         reportresult(true, "Fail Command : ", "FAILED", " command Fail("
                 + message + ")");
         SeleneseTestBaseVir.failure(message);
@@ -901,43 +871,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     /**
      * Stores a value in a given element property and return it as a string
-     * value
-     * 
-     * @param objectName
-     *            logical name of the object
-     * @param component
-     *            Component specification string <br>
+     * value.
+     *
+     * @param objectName            logical name of the object
+     * @param identifier the identifier
+     * @param component            Component specification string <br>
      *            Following is the way user needs to use this parameter<br>
      *            to store a text of an element TEXT: to verify a value of an
      *            element VALUE: to get a value of an attribute ATTR:<name of
-     *            the attribute> *
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusability of the locator.
-     *            The usage can be defined using the following example <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    
-    public int getIntegerProperty(final String objectName, final String identifier,
-            final String component) {
+     *            the attribute/> *
+     * @return the integer property
+     */
+
+    public final int getIntegerProperty(final String objectName,
+            final String identifier, final String component) {
 
         String actualLocator =
                 ObjectMap.getObjectSearchPath(objectName, identifier);
@@ -946,28 +893,32 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         return doGetIntegerProperty(locator, component);
     }
 
-    public int getIntegerProperty(final String objectName, final String component) {
+    /**
+     * Gets the integer property.
+     *
+     * @param objectName the object name
+     * @param component the component
+     * @return the integer property
+     */
+    public final int getIntegerProperty(final String objectName,
+            final String component) {
         return getIntegerProperty(objectName, "", component);
     }
-    
 
     /**
      * Stores a value in a given element property and return it as a string
-     * value
-     * 
-     * @param locator
-     *            logical name of the object
-     * @param component
-     *            Component specification string <br>
+     * value.
+     *
+     * @param locator            logical name of the object
+     * @param component            Component specification string <br>
      *            Following is the way user needs to use this parameter<br>
      *            to store a text of an elemt TEXT: to verify a value of an
      *            element VALUE: to get a value of an attribute ATTR:<name of
-     *            the attribute> *
-     * 
-     * 
-     * */
+     *            the attribute/>.
+     * @return the int
+     */
 
-    public int doGetIntegerProperty(final ObjectLocator locator,
+    private int doGetIntegerProperty(final ObjectLocator locator,
             final String component) {
         String returnValue = "";
         // retrieve the actual object ID from object repository
@@ -979,7 +930,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             WebElement element = checkElementPresence(objectID);
             if (component.startsWith("TEXT:")) {
 
-                returnValue = getVarPropertyTextValue(locator, element, component);
+                returnValue =
+                        getVarPropertyTextValue(locator, element, component);
 
             } else if (component.startsWith("VALUE:")) {
 
@@ -988,9 +940,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         "PASSED", "Object value = " + returnValue);
             } else if (component.startsWith("ATTR:")) {
 
-                returnValue = getVarPropertyAttributeValue(locator, element, component);
+                returnValue =
+                        getVarPropertyAttributeValue(locator, element,
+                                component);
             }
-            
+
         } catch (Exception e) {
             /*
              * after the retry amout, if still the object is not found, report
@@ -1002,17 +956,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 reportresult(
                         true,
                         "SET VARIABLE PROPERTY :" + locator + "."
-                                + component.substring(5),
+                                + component,
                         "FAILED",
                         " command setVarProperty() :Atrribute ("
-                                + component.substring(5) + ")of  [" + locator
+                                + component + ")of  [" + locator
                                 + "] not present");
                 checkTrue(false, true, " command setVarProperty() :Atrribute ("
-                        + component.substring(5) + ")of  [" + locator
+                        + component + ")of  [" + locator
                         + "] not present");
-            }else if (e.getMessage().startsWith("Element")) {
+            } else if (e.getMessage().startsWith("Element")) {
                 reportresult(true, "SET VARIABLE PROPERTY :" + locator + "."
-                        + component.substring(5), "FAILED",
+                        + component, "FAILED",
                         " command setVarProperty()  :Element (" + locator
                                 + ") [" + objectID + "] not present");
                 checkTrue(false, true, " command setVarProperty()  :Element ("
@@ -1023,8 +977,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         try {
             returnval = Integer.parseInt(returnValue);
         } catch (Exception e) {
-            reportresult(true, "SET VARIABLE PROPERTY :" + locator,
-                    "FAILED",
+            reportresult(true, "SET VARIABLE PROPERTY :" + locator, "FAILED",
                     " command setVarProperty() :input value mismatch with int, "
                             + "user input:" + returnValue);
 
@@ -1038,43 +991,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     /**
      * Stores a value in a given element property and return it as a string
-     * value
-     * 
-     * @param objectName
-     *            logical name of the object
-     * @param component
-     *            Component specification string <br>
+     * value.
+     *
+     * @param objectName            logical name of the object
+     * @param identifier the identifier
+     * @param component            Component specification string <br>
      *            Following is the way user needs to use this parameter<br>
      *            to store a text of an elemt TEXT: to verify a value of an
      *            element VALUE: to get a value of an attribute ATTR:<name of
-     *            the attribute> *
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    
-    public boolean getBooleanProperty(final String objectName, final String identifier,
-            final String component) {
+     *            the attribute/> *
+     * @return the boolean property
+     */
+
+    public final boolean getBooleanProperty(final String objectName,
+            final String identifier, final String component) {
 
         String actualLocator =
                 ObjectMap.getObjectSearchPath(objectName, identifier);
@@ -1083,27 +1013,33 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         return doGetBooleanProperty(locator, component);
     }
 
-    public boolean getBooleanProperty(final String objectName, final String component) {
+    /**
+     * Gets the boolean property.
+     *
+     * @param objectName the object name
+     * @param component the component
+     * @return the boolean property
+     */
+    public final boolean getBooleanProperty(final String objectName,
+            final String component) {
         return getBooleanProperty(objectName, "", component);
     }
 
     /**
      * Stores a value in a given element property and return it as a string
-     * value
-     * 
-     * @param locator
-     *            logical name of the object
-     * @param component
-     *            Component specification string <br>
+     * value.
+     *
+     * @param locator            logical name of the object
+     * @param component            Component specification string <br>
      *            Following is the way user needs to use this parameter<br>
      *            to store a text of an elemt TEXT: to verify a value of an
      *            element VALUE: to get a value of an attribute ATTR:<name of
-     *            the attribute> *
-     * 
-     * 
-     * */
+     *            the attribute/> *
+     * @return true, if do get boolean property
+     */
 
-    public boolean doGetBooleanProperty(ObjectLocator locator, final String component) {
+    private boolean doGetBooleanProperty(final ObjectLocator locator,
+            final String component) {
         String returnValue = "";
         // retrieve the actual object ID from object repository
         String objectID = locator.getActualLocator();
@@ -1114,14 +1050,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             WebElement element = checkElementPresence(objectID);
             if (component.startsWith("TEXT:")) {
 
-                returnValue = getVarPropertyTextValue(locator, element, component);
-                
+                returnValue =
+                        getVarPropertyTextValue(locator, element, component);
+
             } else if (component.startsWith("VALUE:")) {
                 returnValue = element.getAttribute("value");
 
             } else if (component.startsWith("ATTR:")) {
 
-                returnValue = getVarPropertyAttributeValue(locator, element, component);
+                returnValue =
+                        getVarPropertyAttributeValue(locator, element,
+                                component);
             }
 
         } catch (Exception e) {
@@ -1131,23 +1070,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              * contains attribute report attribute failure else if e contains
              * element, report object not found
              */
-            
+
             if (e.getMessage().startsWith("Attribute")) {
                 reportresult(
                         true,
                         "SET VARIABLE PROPERTY :" + locator + "."
-                                + component.substring(5),
+                                + component,
                         "FAILED",
                         " command setVarProperty() :Atrribute ("
-                                + component.substring(5) + ")of  [" + locator
+                                + component + ")of  [" + locator
                                 + "] not present");
                 checkTrue(false, true, " command setVarProperty() :Atrribute ("
-                        + component.substring(5) + ")of  [" + locator
+                        + component + ")of  [" + locator
                         + "] not present");
 
-            }else if (e.getMessage().startsWith("Element")) {
+            } else if (e.getMessage().startsWith("Element")) {
                 reportresult(true, "SET VARIABLE PROPERTY :" + locator + "."
-                        + component.substring(5), "FAILED",
+                        + component, "FAILED",
                         " command setVarProperty() :Element (" + locator
                                 + ") [" + objectID + "] not present");
                 checkTrue(false, true, " command setVarProperty() :Element ("
@@ -1161,8 +1100,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     "PASSED", "Object value = " + returnValue);
 
         } else {
-            reportresult(true, "CHECK VARIABLE PROPERTY :" + locator,
-                    "FAILED",
+            reportresult(true, "CHECK VARIABLE PROPERTY :" + locator, "FAILED",
                     " command setVarProperty() :input value mismatch with boolean, "
                             + "user input:" + returnValue);
 
@@ -1241,36 +1179,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * the open window's name by using the Selenium openWindow command, using an
      * empty (blank) url, like this: openWindow("", "myFunnyWindow").<br>
      * <br>
-     * 
-     * @param windowName
-     *            : Logical name of the window assigned by the test scriptor
-     * 
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
+     *
+     * @param windowName            : Logical name of the window assigned by the test scriptor
+     * @param identifier the identifier
+     */
 
-    public void selectWindow(final String windowName, final String identifier) {
+    public final void selectWindow(final String windowName, final String identifier) {
 
         String actualLocator =
                 ObjectMap.getObjectSearchPath(windowName, identifier);
@@ -1279,17 +1193,15 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         doSelectWindow(locator);
     }
 
-    public void selectWindow(final String windowName) {
+    /**
+     * Select window.
+     *
+     * @param windowName the window name
+     */
+    public final void selectWindow(final String windowName) {
         selectWindow(windowName, "");
     }
-    
-    /*public void selectWindow(final String windowName, final String identifire) {
 
-        this.identifire = identifire;
-        selectWindow(windowName);
-        this.identifire = "";
-    }
-*/
     /**
      * Arguments: <br>
      * <br>
@@ -1364,7 +1276,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * 
      * */
-    public void doSelectWindow(final ObjectLocator locator) {
+    private void doSelectWindow(final ObjectLocator locator) {
         int counter = getRetryCount();
         String targetWindow = null;
         WebDriver driver = getDriver();
@@ -1373,7 +1285,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         String window = locator.getActualLocator();
         try {
             checkForNewWindowPopups();
-            
+
             /*
              * START DESCRIPTION following for loop was added to make the
              * command more consistent try the command for give amount of time
@@ -1387,54 +1299,80 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             while (counter > 0) {
                 try {
                     counter--;
-                    
-                    targetWindow = getMatchingWindowFromCurrentWindowHandles(driver, window);
-                    
-                    if (targetWindow!=null) {
+
+                    targetWindow =
+                            getMatchingWindowFromCurrentWindowHandles(driver,
+                                    window);
+
+                    if (targetWindow != null) {
 
                         driver.switchTo().window(targetWindow);
-                        
+
                         driver.manage().window().maximize();
-                        JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
+                        JavascriptExecutor jsExecutor =
+                                (JavascriptExecutor) driver;
                         jsExecutor.executeScript("window.focus();");
-                        
-                        reportresult(true, "SELECT WINDOW :" + locator + "",
-                                "PASSED", "");
+
+                        reportresult(true,
+                                "SELECT WINDOW :" + locator.getLogicalName()
+                                        + "", "PASSED", "");
                         break;
                     } else {
-                        throw new WebDriverException("Window Not Found" + window);
+                        throw new WebDriverException("Window Not Found"
+                                + window);
                     }
                 } catch (WebDriverException ex) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
                         String errorString = ex.getMessage();
-                        reportresult(true, "SELECT WINDOW :" + locator + "",
-                                "FAILED", "selectWindow command  :Element ("
-                                        + locator + ") [" + window
-                                        + "] is not accessible. Actual Error : "+errorString);
-                        checkTrue(false, true,
-                                "selectWindow command  :Element (" + locator
-                                        + ") [" + window
-                                        + "] is not accessible. Actual Error : "+errorString);
+                        String objectName = locator.getLogicalName();
+                        reportresult(
+                                true,
+                                "SELECT WINDOW :" + objectName + "",
+                                "FAILED",
+                                "selectWindow command  :Element ("
+                                        + objectName
+                                        + ") ["
+                                        + window
+                                        + "] is not accessible. Actual Error : "
+                                        + errorString);
+                        checkTrue(
+                                false,
+                                true,
+                                "selectWindow command  :Element ("
+                                        + objectName
+                                        + ") ["
+                                        + window
+                                        + "] is not accessible. Actual Error : "
+                                        + errorString);
                     }
                 }
             }
-            
+
         } catch (Exception e) {
             e.printStackTrace();
+            String objectName = locator.getLogicalName();
             // if any exception is raised, report failure
-            reportresult(true, "SELECT WINDOW :" + locator + "", "FAILED",
-                    "selectWindow command  :Element (" + locator + ") ["
+            reportresult(true, "SELECT WINDOW :" + objectName + "", "FAILED",
+                    "selectWindow command  :Element (" + objectName + ") ["
                             + window + "] not present");
             checkTrue(false, true, "selectWindow command  :Element ("
-                    + locator + ") [" + window + "] not present");
+                    + objectName + ") [" + window + "] not present");
 
         }
 
     }
-    
-    
-    private String getMatchingWindowFromCurrentWindowHandles(final WebDriver driver, final String inputWindowName)
+
+    /**
+     * Gets the matching window from current window handles.
+     *
+     * @param driver the driver
+     * @param inputWindowName the input window name
+     * @return the matching window from current window handles
+     * @throws Exception the exception
+     */
+    private String getMatchingWindowFromCurrentWindowHandles(
+            final WebDriver driver, final String inputWindowName)
             throws Exception {
         String targetWindow = null;
         Set<String> windowarr = getAllWindows();
@@ -1470,9 +1408,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
         return targetWindow;
     }
-    
-    private boolean isMatchingPattern(final String patternString, final String matcherString){
-        
+
+    /**
+     * Checks if is matching pattern.
+     *
+     * @param patternString the pattern string
+     * @param matcherString the matcher string
+     * @return true, if checks if is matching pattern
+     */
+    private boolean isMatchingPattern(final String patternString,
+            final String matcherString) {
+
         Pattern pattern = Pattern.compile(patternString);
         Matcher matcher = pattern.matcher(matcherString);
         return matcher.matches();
@@ -1484,37 +1430,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * these cases, value should be the value of the option selected, not the
      * visible text.<br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
      *            scripter
-     * @param value
-     *            : value to be typed in the object
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    
-    public void type(final String objectName, final String identifier,
+     * @param identifier the identifier
+     * @param value            : value to be typed in the object
+     */
+
+    public final void type(final String objectName, final String identifier,
             final Object value) {
 
         String actualLocator =
@@ -1524,27 +1447,30 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         doType(locator, value);
     }
 
-    public void type(final String objectName, final Object value) {
+    /**
+     * Type.
+     *
+     * @param objectName the object name
+     * @param value the value
+     */
+    public final void type(final String objectName, final Object value) {
         type(objectName, "", value);
     }
-    
+
     /**
      * Sets the value of an input field, as though you typed it in.<br>
      * Can also be used to set the value of comboboxes, check boxes, etc. In
      * these cases, value should be the value of the option selected, not the
      * visible text.<br>
      * <br>
-     * 
-     * @param locator
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param locator            : Logical name of the web element assigned by the automation
      *            scripter
-     * @param value
-     *            : value to be typed in the object
-     * 
-     * */
-    public void doType(final ObjectLocator locator, final Object objValue) {
+     * @param objValue the obj value
+     */
+    public final void doType(final ObjectLocator locator, final Object objValue) {
         String value = checkNullObject(objValue, "TYPE");
-        
+
         int counter = getRetryCount();
 
         // Getting the actual object identification from the object map
@@ -1577,24 +1503,26 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
                     element.sendKeys(value);
 
-                    reportresult(true, "TYPE :" + locator + "", "PASSED",
+                    reportresult(true,
+                            "TYPE :" + locator.getLogicalName() + "", "PASSED",
                             " [Input value = " + value + "]");
                     break;
                 } catch (StaleElementReferenceException staleElementException) {
 
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
                         e.printStackTrace();
-                        reportresult(true, "TYPE :" + locator + "",
+                        String objectName = locator.getLogicalName();
+                        reportresult(true, "TYPE :" + objectName + "",
                                 "FAILED",
                                 "TYPE command cannot access :Element ("
-                                        + locator + ") [" + objectID + "]"
+                                        + objectName + ") [" + objectID + "]"
                                         + " [Input value = " + value + "]");
                         checkTrue(false, true,
                                 "TYPE command cannot access :Element ("
-                                        + locator + ") [" + objectID + "]"
+                                        + objectName + ") [" + objectID + "]"
                                         + " [Input value = " + value + "]");
                     }
                 }
@@ -1604,166 +1532,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              * END DESCRIPTION
              */
         } catch (Exception e) {
-            
+
             // if any exception was raised, report a test failure
             e.printStackTrace();
-            reportresult(true, "TYPE :" + locator + "", "FAILED",
-                    "TYPE command  :Element (" + locator + ") [" + objectID
+            String objectName = locator.getLogicalName();
+            reportresult(true, "TYPE :" + objectName + "", "FAILED",
+                    "TYPE command  :Element (" + objectName + ") [" + objectID
                             + "] [Input value = " + value + "] not present");
-            checkTrue(false, true, "TYPE command  :Element (" + locator
+            checkTrue(false, true, "TYPE command  :Element (" + objectName
                     + ") [" + objectID + "] [Input value = " + value
                     + "] not present");
-
-        }
-
-    }
-
-    /**
-     * Drag and drop a given object to a specific loaction or on to another
-     * object
-     * 
-     * @param sourceObject
-     *            : Source object to be dragged, Specify the logical name
-     * @param targetObject
-     *            : Target object or the target location, to drag the object. <br>
-     *            to specify the object : enter the logical name of the object.
-     *            to specify the location : enter the relative x:y coordinates
-     *            E.g. "+70,-300"
-     * 
-     * @param identifire
-     *            : Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    public void dragAndDrop(final String sourceObject, final String identifire,
-            final String targetObject) {
-        this.identifire = identifire;
-        dragAndDrop(sourceObject, targetObject);
-        this.identifire = "";
-    }
-
-    /**
-     * Drag and drop a given object to a specific loaction or on to another
-     * object
-     * 
-     * @param sourceObject
-     *            : Source object to be dragged, Specify the logical name
-     * @param targetObject
-     *            : Target object or the target location, to drag the object. <br>
-     *            to specify the object : enter the logical name of the object.
-     *            to specify the location : enter the relative x:y coordinates
-     *            E.g. "+70,-300"
-     * 
-     **/
-    public void dragAndDrop(final String sourceObject, final String target) {
-        int counter = getRetryCount();
-
-        // Getting the actual object identification from the object map
-        String sourceObjectID =
-                ObjectMap.getObjectSearchPath(sourceObject, identifire);
-
-        // Checks whether the target is a web element or a coordinate
-        String initialvalue = target.split("\\,")[0].substring(1);
-        boolean isComponent = false;
-        try {
-            Integer.parseInt(initialvalue);
-        } catch (Exception ex) {
-            isComponent = true;
-        }
-
-        // If target is an element, check the presence of the target, in the
-        // page
-        if (isComponent) {
-            String targetObjectID = "";
-            try {
-                targetObjectID =
-                        ObjectMap.getObjectSearchPath(target, identifire);
-                checkElementPresence(targetObjectID);
-            } catch (Exception ex) {
-                reportresult(true, "DragandDrp :" + target + "", "FAILED",
-                        "DRAGANDDROP command  : Target element (" + target
-                                + ") [" + targetObjectID + "] not present");
-                checkTrue(false, true, "DRAGANDDROP command  :Element ("
-                        + target + ") [" + targetObjectID + "] not present");
-                return;
-            }
-        }
-        try {
-            // Check whether the element present
-            checkElementPresence(sourceObjectID);
-
-            /*
-             * START DESCRIPTION following for loop was added to make the
-             * command more consistent try the command for give amount of time
-             * (can be configured through class variable RETRY) command will be
-             * tried for "RETRY" amount of times or until command works. any
-             * exception thrown within the tries will be handled internally.
-             * 
-             * can be exited from the loop under 2 conditions 1. if the command
-             * succeeded 2. if the RETRY count is exceeded
-             */
-            while (counter > 0) {
-                try {
-                    counter--;
-
-                    // if coordinates were supplied as target
-                    if (isComponent) {
-                        /*
-                         * selenium.dragAndDropToObject(sourceObjectID,
-                         * targetObjectID);
-                         */} else {
-                        // selenium.dragAndDrop(sourceObjectID, target);
-
-                    }
-                    reportresult(true, "DRAGANDDROP :" + sourceObjectID + "",
-                            "PASSED", "");
-                    break;
-                } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
-                    
-                    if (!(counter > 0)) {
-                        e.printStackTrace();
-                        reportresult(true, "DRAGANDDROP :" + sourceObject + "",
-                                "FAILED",
-                                "DRAGANDDROP command cannot access :Element ("
-                                        + sourceObject + ") [" + sourceObjectID
-                                        + "]");
-                        checkTrue(false, true,
-                                "DRAGANDDROP command cannot access :Element ("
-                                        + sourceObject + ") [" + sourceObjectID
-                                        + "]");
-                    }
-                }
-
-            }
-            /*
-             * END DESCRIPTION
-             */
-        } catch (Exception e) {
-            
-            // if any exception was raised, report a test failure
-            e.printStackTrace();
-            reportresult(true, "DRAGANDDROP :" + sourceObject + "", "FAILED",
-                    "DRAGANDDROP command  :Element (" + sourceObject + ") ["
-                            + sourceObjectID + "] not present");
-            checkTrue(false, true, "DRAGANDDROP command  :Element ("
-                    + sourceObject + ") [" + sourceObjectID + "] not present");
 
         }
 
@@ -1789,47 +1567,15 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * If no option locator prefix is provided, the default behaviour is to
      * match on label. <br>
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
      *            scripter <br>
      * <br>
-     * @param value
-     *            : value to be selected from the drpodown <br>
-     *            If working with multi-select list box, to select multiple
-     *            items <br>
-     *            give the multiple values seperated by <b> # </b> symbol e.g. <br>
-     * <br>
-     * 
-     *            for selecting single option : apple<br>
-     *            for selecting multiple options : apple#orange#mango <br>
-     * <br>
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is used to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://<p1>/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    
-    public void select(final String objectName, final String identifier,
+     * @param identifier the identifier
+     * @param objValue the obj value
+     */
+
+    public final void select(final String objectName, final String identifier,
             final Object objValue) {
 
         String actualLocator =
@@ -1839,11 +1585,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         doSelect(locator, objValue);
     }
 
-    public void select(final String objectName, final Object objValue) {
+    /**
+     * Select.
+     *
+     * @param objectName the object name
+     * @param objValue the obj value
+     */
+    public final void select(final String objectName, final Object objValue) {
         select(objectName, "", objValue);
     }
-    
-    
+
     /**
      * Select an option\options from a drop-down using an option locator. <br>
      * 
@@ -1865,30 +1616,19 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * If no option locator prefix is provided, the default behaviour is to
      * match on label. <br>
      * <br>
-     * 
-     * @param locator
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param locator            : Logical name of the web element assigned by the automation
      *            scripter <br>
      * <br>
-     * @param value
-     *            : value to be selected from the drpodown <br>
-     *            If working with multi-select list box, to select multiple
-     *            items <br>
-     *            give the multiple values seperated by <b> # </b> symbol e.g. <br>
-     * <br>
-     * 
-     *            for selecting single option : apple <br>
-     *            for selecting multiple options : apple#orange#mango <br>
-     * <br>
-     * 
-     * */
-    public void doSelect(final ObjectLocator locator, final Object objValue) {
+     * @param objValue the obj value
+     */
+    private void doSelect(final ObjectLocator locator, final Object objValue) {
 
         String value = checkNullObject(objValue, "SELECT");
         int counter = getRetryCount();
-        String actualOptions[] = {};
-        String valueStr = "";
+        String[] actualOptions = {};
         boolean multiSelect = false;
+        String objectName = locator.getLogicalName();
 
         String objectID = locator.getActualLocator();
         try {
@@ -1905,8 +1645,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 actualOptions[i] = actualElementOptions.get(i).getText();
             }
             multiSelect =
-                    checkSelectOptions(objectID, value, selectElement,
-                            actualOptions);
+                    checkSelectOptions(value, actualOptions);
 
             /*
              * START DESCRIPTION following for loop was added to make the
@@ -1925,21 +1664,21 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
                     if (!multiSelect) {
 
-                        valueStr =
-                                selectSingleOptionFromActualDropdown(
+                        selectSingleOptionFromActualDropdown(
                                         selectElement, actualOptions, value);
 
-                        if(!checkSelectedOptionValue(objectID, valueStr)) continue;
+                        if (!checkSelectedOptionValue(objectID, value)) {
+                            continue;
+                        }
 
-                        reportresult(true, "SELECT :" + locator + "", "PASSED",
-                                "");
+                        reportresult(true, "SELECT :" + objectName + "",
+                                "PASSED", "");
                         break;
                     } else {
 
-                        selectMultipleOptionFromActualDropDown(selectElement,
-                                actualOptions, value);
-                        reportresult(true, "SELECT :" + locator + "", "PASSED",
-                                "");
+                        selectMultipleOptionFromActualDropDown(selectElement, value);
+                        reportresult(true, "SELECT :" + objectName + "",
+                                "PASSED", "");
                     }
 
                 } catch (StaleElementReferenceException staleElementException) {
@@ -1947,17 +1686,18 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     element = checkElementPresence(objectID);
                     selectElement = new Select(element);
                 } catch (Exception ex) {
-                    pause(RETRY_INTERVAL);
-                    
+                    pause(retryInterval);
+
                     if (!(counter > 0)) {
                         ex.printStackTrace();
-                        reportresult(true, "SELECT :" + locator + "",
+
+                        reportresult(true, "SELECT :" + objectName + "",
                                 "FAILED",
                                 "SELECT command cannot access :Element ("
-                                        + locator + ") [" + objectID + "] ");
+                                        + objectName + ") [" + objectID + "] ");
                         checkTrue(false, true,
                                 "SELECT command cannot access  :Element ("
-                                        + locator + ") [" + objectID + "] ");
+                                        + objectName + ") [" + objectID + "] ");
                     }
                 }
             }
@@ -1970,41 +1710,83 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             // Several checks were introduced to narrow down to the failure to
             // the exact cause.
             ErrorMessageHandler messages = new ErrorMessageHandler();
-            String error = messages.getSelectCommandErrorMessages(e.getMessage());
-            String formattedError = error.replaceAll("<locator>", locator.getLogicalName()).replaceAll("<objectID>", objectID)
-                .replaceAll("<inputValue>", objValue.toString()).replaceAll("<actualOptions>", Arrays.asList(actualOptions).toString());
-            
+            String error =
+                    messages.getSelectCommandErrorMessages(e.getMessage());
+            String formattedError =
+                    error.replaceAll("<locator>", objectName)
+                            .replaceAll("<objectID>", objectID)
+                            .replaceAll("<inputValue>", objValue.toString())
+                            .replaceAll("<actualOptions>",
+                                    Arrays.asList(actualOptions).toString());
+
             e.printStackTrace();
-            reportresult(true, "SELECT :" + locator + "", "FAILED",
+            reportresult(true, "SELECT :" + objectName + "", "FAILED",
                     formattedError);
             checkTrue(false, true, formattedError);
         }
     }
-    
-    
-    private boolean checkSelectedOptionValue(final String objectID, final String expectedSelectedValue){
-        
+
+    /**
+     * Check selected option value.
+     *
+     * @param objectID the object id
+     * @param expectedSelectedValue the expected selected value
+     * @return true, if check selected option value
+     */
+    private boolean checkSelectedOptionValue(final String objectID,
+            final String expectedSelectedValue) {
+
         try {
             WebElement element = checkElementPresence(objectID);
             Select selectElement = new Select(element);
             String selectedValue =
-                    selectElement.getFirstSelectedOption()
-                            .getText();
-            return selectedValue.equals(expectedSelectedValue);
+                    selectElement.getFirstSelectedOption().getText();
+            
+            if (expectedSelectedValue.startsWith("regexp:")) {
+
+                Pattern pattern =
+                        Pattern.compile(expectedSelectedValue.substring(expectedSelectedValue.indexOf(':') + 1,
+                                expectedSelectedValue.length()));
+                Matcher matcher = pattern.matcher(selectedValue);
+                return matcher.matches();
+
+            } else if (expectedSelectedValue.startsWith("index=")) {
+                
+                int indexNo = Integer.parseInt(expectedSelectedValue.replace("index=", ""));
+                List<WebElement> actualOptions = selectElement.getOptions();
+                List<String> stringOptions = new ArrayList<String>();
+                for (WebElement actualOption : actualOptions) {
+                    stringOptions.add(actualOption.getText());
+                }
+                return selectedValue.equals(stringOptions.get(indexNo)); 
+                
+            } else {
+
+                return selectedValue.equals(expectedSelectedValue);
+            }
+            
+        } catch (WebDriverException e) {
+            return false;
         } catch (Exception e) {
             return false;
-        }        
+        }
     }
-    
-    private void selectMultipleOptionFromActualDropDown(final Select selectElement, final String[] actualOptions, final String value) {
-        
-        String options[] = value.split("#");
+
+    /**
+     * Select multiple option from actual drop down.
+     *
+     * @param selectElement the select element
+     * @param value the value
+     */
+    private void selectMultipleOptionFromActualDropDown(
+            final Select selectElement,
+            final String value) {
+
+        String[] options = value.split("#");
         for (String option : options) {
             if (option.startsWith("index=")) {
 
-                int indexNo =
-                        Integer.parseInt(option.replace(
-                                "index=", ""));
+                int indexNo = Integer.parseInt(option.replace("index=", ""));
                 selectElement.selectByIndex(indexNo);
 
             } else {
@@ -2013,14 +1795,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             break;
         }
     }
-    
-    private String selectSingleOptionFromActualDropdown(final Select selectElement, final String[] actualOptions, final String value){
+
+    /**
+     * Select single option from actual dropdown.
+     *
+     * @param selectElement the select element
+     * @param actualOptions the actual options
+     * @param value the value
+     * @return the string
+     */
+    private String selectSingleOptionFromActualDropdown(
+            final Select selectElement, final String[] actualOptions,
+            final String value) {
         String selectedValue = "";
         if (value.startsWith("regexp:")) {
 
             Pattern pattern =
-                    Pattern.compile(value.substring(
-                            value.indexOf(':') + 1,
+                    Pattern.compile(value.substring(value.indexOf(':') + 1,
                             value.length()));
             for (String actualOption : actualOptions) {
                 Matcher matcher = pattern.matcher(actualOption);
@@ -2033,9 +1824,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
         } else if (value.startsWith("index=")) {
 
-            int indexNo =
-                    Integer.parseInt(value
-                            .replace("index=", ""));
+            int indexNo = Integer.parseInt(value.replace("index=", ""));
 
             selectElement.selectByIndex(indexNo);
 
@@ -2046,13 +1835,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         return selectedValue;
     }
 
-    
-    
-    
     /**
-     * Sleeps for the specified number of milliseconds
-     * */
-    public void pause(final String waitingTime) {
+     * Sleeps for the specified number of milliseconds.
+     *
+     * @param waitingTime the waiting time
+     */
+    public final void pause(final String waitingTime) {
         int waitingMilliSeconds = Integer.parseInt(waitingTime);
         super.pause(waitingMilliSeconds);
         reportresult(true, "PAUSE Command: (" + waitingMilliSeconds + " ms)",
@@ -2065,40 +1853,27 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * click action causes a new page to load <br>
      * (like a link usually does), call waitForPageToLoad. <br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the object to be doubleclicked.
-     * @param coordinates
-     *            : X,Y coordinates of the position to be clicked with respect
-     *            to the object
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Logical Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    public void doubleClick(final String objectName, final String identifire) {
-        this.identifire = identifire;
-        doubleClick(objectName);
-        this.identifire = "";
+     *
+     * @param objectName            : Logical name of the object to be doubleclicked.
+     * @param identifier the identifier
+     */
+
+    public final void doubleClick(final String objectName, final String identifier) {
+
+        String actualLocator =
+                ObjectMap.getObjectSearchPath(objectName, identifier);
+        ObjectLocator locator =
+                new ObjectLocator(objectName, identifier, actualLocator);
+        doDoubleClick(locator);
+    }
+
+    /**
+     * Double click.
+     *
+     * @param objectName the object name
+     */
+    public final void doubleClick(final String objectName) {
+        doubleClick(objectName, "");
     }
 
     /**
@@ -2106,20 +1881,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * click action causes a new page to load <br>
      * (like a link usually does), call waitForPageToLoad. <br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the object to be doubleclicked.
-     * 
-     * @param coordinates
-     *            : X,Y coordinates of the position to be clicked with respect
-     *            to the object
-     * */
+     *
+     * @param locator the locator
+     */
 
-    public void doubleClick(final String objectName) {
+    private void doDoubleClick(final ObjectLocator locator) {
         // Retrieve the actual object name from the object repository
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+
         int counter = getRetryCount();
         WebDriver driver = getDriver();
+        String objectName = locator.getLogicalName();
+        String objectID = locator.getActualLocator();
         try {
             // First chacking whether the element is present
             checkForNewWindowPopups();
@@ -2151,8 +1923,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    
-                    pause(RETRY_INTERVAL);
+
+                    pause(retryInterval);
                     if (!(counter > 0)) {
 
                         e.printStackTrace();
@@ -2186,14 +1958,10 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * Arguments:<br>
      * locator - an element locator<br>
      * Check a toggle-button (checkbox/radio)<br>
-     * <br>
-     * 
-     * @param objectName
-     *            : logical name of the object assigned by the user
-     * @param isSelect
-     *            : specify whether to check or uncheck the button
-     * @param identifire
-     *            :
+     * <br>.
+     *
+     * @param objectName            : logical name of the object assigned by the user
+     * @param identifire            :
      * 
      *            Identifier is us to increase the reusablity of the locator.
      *            The usage can be defined using the following examble <br>
@@ -2214,12 +1982,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      *            p1: www.virtusa.com<br>
      * <br>
      *            The absolute xpath will be dynamically generated
-     * */
-    public void check(final String objectName, final String identifire,
+     * @param isSelect            : specify whether to check or uncheck the button
+     */
+    public final void check(final String objectName, final String identifire,
             final boolean isSelect) {
-        this.identifire = identifire;
+        this.locatorIdentifire = identifire;
         check(objectName, isSelect);
-        this.identifire = "";
+        this.locatorIdentifire = "";
     }
 
     /**
@@ -2227,19 +1996,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * Arguments:<br>
      * locator - an element locator<br>
      * Check a toggle-button (checkbox/radio)<br>
-     * <br>
-     * 
-     * @param objectName
-     *            : logical name of the object assigned by the user
-     * @param isSelect
-     *            : specify whether to check or uncheck the button
-     * 
-     * */
-    public void check(final String objectName, final boolean isSelect) {
+     * <br>.
+     *
+     * @param objectName            : logical name of the object assigned by the user
+     * @param isSelect            : specify whether to check or uncheck the button
+     */
+    public final void check(final String objectName, final boolean isSelect) {
         int counter = getRetryCount();
         String option = "";
         // Getting the actual object identification from the object map
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         try {
             // Check whether the element present
             checkForNewWindowPopups();
@@ -2282,8 +2048,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
-                    
+                    pause(retryInterval);
+
                     if (!(counter > 0)) {
                         e.printStackTrace();
                         reportresult(true, "CHECK : (" + option + ")"
@@ -2301,7 +2067,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              * END DESCRIPTION
              */
         } catch (Exception e) {
-            
+
             // if any exception was raised, report a test failure
             e.printStackTrace();
             reportresult(true, "CHECK (" + option + "):" + objectName + "",
@@ -2321,43 +2087,31 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * The main differentiator of <b> DoubleClickAt </b> is, user can make the
      * script click on a relative location to the element <br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the object provided by the user
-     * @param locator
-     *            : the coordination string to be click which is relative to the
-     *            element <br>
-     *            this should be specified using relative X and Y coordinates,
-     *            in the following format "X,Y"
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusability of the locator.
-     *            The usage can be defined using the following example <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Logical Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
+     *
+     * @param objectName            : Logical name of the object provided by the user
+     * @param identifier the identifier
+     * @param coordinateString the coordinate string
+     */
 
-    public void doubleClickAt(final String objectName, final String identifire,
-            final String coordinates) {
-        this.identifire = identifire;
-        doubleClickAt(objectName, coordinates);
-        this.identifire = "";
+    public final void doubleClickAt(final String objectName, final String identifier,
+            final String coordinateString) {
+
+        String actualLocator =
+                ObjectMap.getObjectSearchPath(objectName, identifier);
+        ObjectLocator locator =
+                new ObjectLocator(objectName, identifier, actualLocator);
+        doDoubleClickAt(locator, coordinateString);
+    }
+
+    /**
+     * Double click at.
+     *
+     * @param objectName the object name
+     * @param coordinateString the coordinate string
+     */
+    public final void doubleClickAt(final String objectName,
+            final String coordinateString) {
+        doubleClickAt(objectName, "", coordinateString);
     }
 
     /**
@@ -2367,24 +2121,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * The main differentiator of <b> DoubleClickAt </b> is, user can make the
      * script click on a relative location to the element <br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the object provided by the user
-     * @param locator
-     *            : the coordination string to be click which is relative to the
+     *
+     * @param locator            : the coordination string to be click which is relative to the
      *            element <br>
      *            this should be specified using relative X and Y coordinates,
      *            in the following format "X,Y"
+     * @param coordinateString the coordinate string
      */
 
-    public void doubleClickAt(final String objectName,
+    private void doDoubleClickAt(final ObjectLocator locator,
             final String coordinateString) {
         int counter = getRetryCount();
         int xOffset = 0;
         int yOffset = 0;
         WebDriver driver = getDriver();
         // Retrieve the actual object identification from the OR
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = locator.getActualLocator();
+        String objectName = locator.getLogicalName();
         try {
 
             // Precheck done to check whether the element is available if
@@ -2441,7 +2194,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     // The main possibility of throwing exception at this point
                     // should be due to the element was not
                     // fully loaded, in this catch block handle the exception
@@ -2468,15 +2221,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         } catch (Exception e) {
             // if any exception was raised report report an error and fail the
             // test case
-            if (!(counter > 0)) {
-                e.printStackTrace();
-                reportresult(true, "DOUBLE CLICK AT :" + objectName + "",
-                        "FAILED", "DOUBLE CLICK AT command  :Element ("
-                                + objectName + ") [" + objectID
-                                + "] not present");
-                checkTrue(false, true, "DOUBLE CLICK AT command  :Element ("
-                        + objectName + ") [" + objectID + "] not present");
-            }
+            e.printStackTrace();
+            reportresult(true, "DOUBLE CLICK AT :" + objectName + "", "FAILED",
+                    "DOUBLE CLICK AT command  :Element (" + objectName + ") ["
+                            + objectID + "] not present");
+            checkTrue(false, true, "DOUBLE CLICK AT command  :Element ("
+                    + objectName + ") [" + objectID + "] not present");
         }
 
     }
@@ -2488,41 +2238,32 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * besed on value of the <b> continueExecution </b> parameter provided by
      * the user <br>
      * <br>
-     * 
-     * @param objectName
-     *            : logical name of the object provided by the user
-     * @param stopExecution
-     *            : if <b> true </b> : stop the execution after the failure <br>
+     *
+     * @param objectName            : logical name of the object provided by the user
+     * @param identifier the identifier
+     * @param stopExecution            : if <b> true </b> : stop the execution after the failure <br>
      *            if <b> false </b>: Continue the execution after the failure
-     * 
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusability of the locator.
-     *            The usage can be defined using the following example <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Logical Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    public void checkElementPresent(final String objectName,
-            final String identifire, final boolean stopExecution) {
-        this.identifire = identifire;
-        checkElementPresent(objectName, stopExecution);
-        this.identifire = "";
+     */
+
+    public final void checkElementPresent(final String objectName,
+            final String identifier, final boolean stopExecution) {
+
+        String actualLocator =
+                ObjectMap.getObjectSearchPath(objectName, identifier);
+        ObjectLocator locator =
+                new ObjectLocator(objectName, identifier, actualLocator);
+        doCheckElementPresent(locator, stopExecution);
+    }
+
+    /**
+     * Check element present.
+     *
+     * @param objectName the object name
+     * @param stopExecution the stop execution
+     */
+    public final void checkElementPresent(final String objectName,
+            final boolean stopExecution) {
+        checkElementPresent(objectName, "", stopExecution);
     }
 
     /**
@@ -2532,17 +2273,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * besed on value of the <b> continueExecution </b> parameter provided by
      * the user <br>
      * <br>
-     * 
-     * @param objectName
-     *            : logical name of the object provided by the user
-     * @param stopExecution
-     *            : if <b> true </b> : stop the execution after the failure <br>
+     *
+     * @param locator the locator
+     * @param stopExecution            : if <b> true </b> : stop the execution after the failure <br>
      *            if <b> false </b>: Continue the execution after the failure
      */
-    public void checkElementPresent(final String objectName,
+    private void doCheckElementPresent(final ObjectLocator locator,
             final boolean stopExecution) {
         // Retrieve the actual object id from the OR
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = locator.getActualLocator();
+        String objectName = locator.getLogicalName();
         try {
             // Check whether the element is present, the validation
             checkForNewWindowPopups();
@@ -2568,14 +2308,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     /**
      * checks whether the object referred by the logical id exists.<br>
      * Returs true or false based on the availability of the element. <br>
-     * 
-     * @param objectName
-     *            : logical name of the object provided by the user
+     *
+     * @param objectName            : logical name of the object provided by the user
+     * @return true, if check element present
      */
 
-    public boolean checkElementPresent(final String objectName) {
+    public final boolean checkElementPresent(final String objectName) {
         // Retrieve the actual object id from the OR
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         if (objectID.isEmpty()) {
             objectID = objectName;
         }
@@ -2597,22 +2337,19 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * besed on value of the <b> continueExecution </b> parameter provided by
      * the user <br>
      * <br>
-     * 
-     * @param objectName
-     *            : object name alias given by the user.
-     * @param stopOnFailure
-     *            : if <b> true </b> : stop the execution after the failure <br>
+     *
+     * @param objSearchText the obj search text
+     * @param stopOnFailure            : if <b> true </b> : stop the execution after the failure <br>
      *            if <b> false </b>: Continue the execution after the failure
-     * 
-     * 
-     * */
-    public void checkTextPresent(final Object objSearchText,
+     */
+    public final void checkTextPresent(final Object objSearchText,
             final boolean stopOnFailure) {
 
-        String searchText = checkNullObject(objSearchText, "CHECK TEXT PRESENT");
+        String searchText =
+                checkNullObject(objSearchText, "CHECK TEXT PRESENT");
         int counter = getRetryCount();
         // retrieves the objectid from the object repository
-        String objectID = ObjectMap.getObjectSearchPath(searchText, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(searchText, locatorIdentifire);
 
         // if, in case, the user has given the search text itself instead of
         // objectid this
@@ -2644,9 +2381,9 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                             "");
                     break;
                 }
-                pause(RETRY_INTERVAL);
+                pause(retryInterval);
 
-                if ((!(counter > 0)) && (objectFound == false)) {
+                if ((!(counter > 0)) && !objectFound) {
                     // if the retry count has exceeded and still the text is not
                     // present,
                     // report a test failure
@@ -2689,54 +2426,39 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * besed on value of the <b> continueExecution </b> parameter provided by
      * the user <br>
      * <br>
-     * in the web page
-     * 
-     * @param objectName
-     *            : object name alias given by the user.
-     * @param propertyname
-     *            : Name of the object property
-     * @param expectedvale
-     *            : value expected for the given property
-     * @param stopOnFailure
-     *            :if <I> true </I> : stop the execution after the failure <br>
+     * in the web page.
+     *
+     * @param objectName            : object name alias given by the user.
+     * @param identifire the identifire
+     * @param propertyname            : Name of the object property
+     * @param expectedvale            : value expected for the given property
+     * @param stopOnFailure            :if <I> true </I> : stop the execution after the failure <br>
      *            if <I> false </I>: Continue the execution after the failure
-     * 
-     * @param Identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusability of the locator.
-     *            The usage can be defined using the following example <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Logical Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * 
-     * @throws Exception
-     * */
-    public void checkObjectProperty(final String objectName,
+     */
+    public final void checkObjectProperty(final String objectName,
             final String identifire, final String propertyname,
             final Object expectedvale, final boolean stopOnFailure) {
-        this.identifire = identifire;
+        this.locatorIdentifire = identifire;
         checkObjectProperty(objectName, propertyname, expectedvale,
                 stopOnFailure);
-        this.identifire = "";
+        this.locatorIdentifire = "";
     }
 
+    /**
+     * The Enum ObjectValidationType.
+     */
     public static enum ObjectValidationType {
-        ALLOPTIONS, SELECTEDOPTION, MISSINGOPTION, ELEMENTPRESENT, PROPERTYPRESENT
+        
+        /** The alloptions. */
+        ALLOPTIONS, 
+ /** The selectedoption. */
+ SELECTEDOPTION, 
+ /** The missingoption. */
+ MISSINGOPTION, 
+ /** The elementpresent. */
+ ELEMENTPRESENT, 
+ /** The propertypresent. */
+ PROPERTYPRESENT
     };
 
     /**
@@ -2746,25 +2468,22 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * besed on value of the <b> continueExecution </b> parameter provided by
      * the user <br>
      * <br>
-     * in the web page
-     * 
-     * @param objectName
-     *            : object name alias given by the user.
-     * @param propertyname
-     *            : Name of the object property
-     * @param expectedvale
-     *            : value expected for the given property
-     * @param stopOnFailure
-     *            :if <I> true </I> : stop the execution after the failure <br>
+     * in the web page.
+     *
+     * @param objectName            : object name alias given by the user.
+     * @param propertyname            : Name of the object property
+     * @param objExpectedvale the obj expectedvale
+     * @param stopOnFailure            :if <I> true </I> : stop the execution after the failure <br>
      *            if <I> false </I>: Continue the execution after the failure
      */
 
-    public void checkObjectProperty(final String objectName,
+    public final void checkObjectProperty(final String objectName,
             final String propertyname, final Object objExpectedvale,
             final boolean stopOnFailure) {
 
-        String expectedvale = checkNullObject(objExpectedvale, "CHECK OBJECT PROPERTY");
-        
+        String expectedvale =
+                checkNullObject(objExpectedvale, "CHECK OBJECT PROPERTY");
+
         // Call the relavant internal method based on the
         // TableValidationType provided by the user
         if (propertyname.equals(ObjectValidationType.ALLOPTIONS.toString())) {
@@ -2800,7 +2519,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Check if a property value is present or not in an element
+     * Check if a property value is present or not in an element.
+     *
+     * @param objectName the object name
+     * @param property the property
+     * @param expectedvale the expectedvale
+     * @param stopOnFailure the stop on failure
      */
     private void checkPropertyPresent(final String objectName,
             final String property, final String expectedvale,
@@ -2808,7 +2532,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
         int counter = getRetryCount();
         // retrieve the actual object ID from object repository
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
 
         String propertyName = "";
         String condition = "";
@@ -2894,7 +2618,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
                         reportresult(stopOnFailure, "CHECK OBJECT PROPERTY :"
                                 + objectName + "." + property, "FAILED",
@@ -2921,8 +2645,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
     }
 
-    private boolean checkAttributePresent(final WebElement element, final String propertyName){
-        
+    /**
+     * Check attribute present.
+     *
+     * @param element the element
+     * @param propertyName the property name
+     * @return true, if check attribute present
+     */
+    private boolean checkAttributePresent(final WebElement element,
+            final String propertyName) {
+
         boolean isAttributePresent;
         if ("textContent".equalsIgnoreCase(propertyName)) {
             String textValue = element.getText();
@@ -2932,8 +2664,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 isAttributePresent = true;
             }
         } else {
-            if (element.getAttribute(propertyName
-                    .toUpperCase(Locale.getDefault())) != null) {
+            if (element.getAttribute(propertyName.toUpperCase(Locale
+                    .getDefault())) != null) {
                 isAttributePresent = true;
             } else {
                 isAttributePresent = false;
@@ -2941,9 +2673,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
         return isAttributePresent;
     }
-    
+
     /**
-     * Check if a option is not displaying in the webpage
+     * Check if a option is not displaying in the webpage.
+     *
+     * @param objectName the object name
+     * @param propertyname the propertyname
+     * @param expectedvale the expectedvale
+     * @param stopOnFailure the stop on failure
      */
     private void checkMissingOption(final String objectName,
             final String propertyname, final String expectedvale,
@@ -2951,7 +2688,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
         int counter = getRetryCount();
         // retrieve the actual object ID from object repository
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         try {
             // Checking whether the element is present
             checkForNewWindowPopups();
@@ -3009,7 +2746,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     element = checkElementPresence(objectID);
                     selectElement = new Select(element);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
                         reportresult(stopOnFailure, "CHECK OBJECT PROPERTY :"
                                 + objectName + "." + propertyname, "FAILED",
@@ -3037,16 +2774,21 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Check if a element is displaying or not in the webpage
+     * Check if a element is displaying or not in the webpage.
+     *
+     * @param objectName the object name
+     * @param propertyname the propertyname
+     * @param expectedvale the expectedvale
+     * @param stopOnFailure the stop on failure
      */
 
-    public void checkElementNotPresent(final String objectName,
+    public final void checkElementNotPresent(final String objectName,
             final String propertyname, final String expectedvale,
             final boolean stopOnFailure) {
 
         int counter = getRetryCount();
         // retrieve the actual object ID from object repository
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
 
         String isObjectFound = "false";
         /*
@@ -3066,10 +2808,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     objectLocator(objectID);
                     isObjectFound = "True";
                 } catch (Exception ex) {
-                    System.out.println("Element " + objectName
-                            + " cannot be found. Error : " + ex.getMessage());
+                    getLog().error(
+                            "Element " + objectName
+                                    + " cannot be found. Error : "
+                                    + ex.getMessage());
                 }
-                /* isObjectFound = "" + selenium.isElementPresent(objectID); */
                 if (isObjectFound.equalsIgnoreCase(expectedvale)) {
                     reportresult(true, "CHECK OBJECT PROPERTY :" + objectName
                             + ".ELEMENTPRESENT", "PASSED", "");
@@ -3081,7 +2824,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 }
 
             } catch (Exception e) {
-                pause(RETRY_INTERVAL);
+                pause(retryInterval);
 
                 if (e.getMessage().startsWith("Element")) {
                     reportresult(
@@ -3124,7 +2867,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     /**
      * Checks all the options in a select element. <br>
      * The option value count must be same in actual and expected.
-     **/
+     *
+     * @param objectName the object name
+     * @param propertyname the propertyname
+     * @param expectedvale the expectedvale
+     * @param stopOnFailure the stop on failure
+     */
     private void checkAllSelectOptions(final String objectName,
             final String propertyname, final String expectedvale,
             final boolean stopOnFailure) {
@@ -3132,7 +2880,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         int counter = getRetryCount();
         String verificationErrors = "";
         // retrieve the actual object ID from object repository
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         try {
             // Checking whether the element is present
             checkForNewWindowPopups();
@@ -3234,7 +2982,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     element = checkElementPresence(objectID);
                     selectElement = new Select(element);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
 
                     if (!(counter > 0)) {
                         e.printStackTrace();
@@ -3271,12 +3019,19 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                             + ") [" + objectID + "] not present");
         }
     }
-    
-    
-    private StringBuilder compareActualOptionValuesWithExpected(String[] actualSelectOptions, String[] expectedSelectOptions){
-        
-        StringBuilder verificationErrorBuilder =
-                new StringBuilder();
+
+    /**
+     * Compare actual option values with expected.
+     *
+     * @param actualSelectOptions the actual select options
+     * @param expectedSelectOptions the expected select options
+     * @return the string builder
+     */
+    private StringBuilder compareActualOptionValuesWithExpected(
+            final String[] actualSelectOptions,
+            final String[] expectedSelectOptions) {
+
+        StringBuilder verificationErrorBuilder = new StringBuilder();
         for (int optionIndex = 0; optionIndex < actualSelectOptions.length; optionIndex++) {
 
             if (!Arrays.asList(actualSelectOptions).contains(
@@ -3288,15 +3043,19 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                                 + " : "
                                 + expectedSelectOptions[optionIndex]
                                 + " Option is not available in the actual element. Actual ["
-                                + Arrays.toString(actualSelectOptions)
-                                + "]");
+                                + Arrays.toString(actualSelectOptions) + "]");
             }
         }
         return verificationErrorBuilder;
     }
 
     /**
-     * Check the current selected option value in a select element
+     * Check the current selected option value in a select element.
+     *
+     * @param objectName the object name
+     * @param propertyname the propertyname
+     * @param expectedvale the expectedvale
+     * @param stopOnFailure the stop on failure
      */
     private void checkSelectedOption(final String objectName,
             final String propertyname, final String expectedvale,
@@ -3304,7 +3063,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
         int counter = getRetryCount();
         // retrieve the actual object ID from object repository
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         try {
             // Checking whether the element is present
             checkForNewWindowPopups();
@@ -3355,7 +3114,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     element = checkElementPresence(objectID);
                     selectElement = new Select(element);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
                         reportresult(stopOnFailure, "CHECK OBJECT PROPERTY :"
                                 + objectName + "." + propertyname, "FAILED",
@@ -3386,6 +3145,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     /**
      * Check user defined attribute value in the specific element.
+     *
+     * @param objectName the object name
+     * @param propertyname the propertyname
+     * @param expectedvale the expectedvale
+     * @param stopOnFailure the stop on failure
      */
 
     private void checkObjectOtherProperty(final String objectName,
@@ -3393,7 +3157,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             final boolean stopOnFailure) {
         int counter = getRetryCount();
         // retrieve the actual object ID from object repository
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         try {
             // Checking whether the element is present
             checkForNewWindowPopups();
@@ -3413,7 +3177,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 try {
                     counter--;
                     String attributeValue =
-                            validateObjectProperty(element,propertyname);
+                            validateObjectProperty(element, propertyname);
                     if (attributeValue.trim().equals(expectedvale.trim())) {
                         reportresult(true, "CHECK OBJECT PROPERTY :"
                                 + objectName + "." + propertyname, "PASSED",
@@ -3442,7 +3206,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 } catch (StaleElementReferenceException staleElementException) {
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     /*
                      * after the retry amout, if still the object is not found,
                      * report the failure error will be based on the exception
@@ -3495,7 +3259,6 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                             + ") [" + objectID + "] not present");
         }
     }
- 
 
     /**
      * This is a multipurpose function which performes various validations in a
@@ -3655,21 +3418,9 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * </tbody>
      * </table>
-     * 
-     * @param objectName
-     *            Logical name of the object
-     * @param validationType
-     *            validation type code please refer the above table for detailed
-     *            information
-     * @param expectedvale
-     *            value\value string which will be provided by the user to
-     *            specify the expected result
-     * @param stopOnFaliure
-     *            specify the continuation of the test script if the validation
-     *            fails
-     * @param identifire
-     * 
-     *            identifier is us to increase the reusability of the locator.
+     *
+     * @param objectName            Logical name of the object
+     * @param identifire            identifier is us to increase the reusability of the locator.
      *            The usage can be defined using the following example <br>
      * <br>
      *            assume the following locator is assigned the following logical
@@ -3688,20 +3439,33 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      *            p1: www.virtusa.com<br>
      * <br>
      *            The absolute xpath will be dynamically generated
-     * */
-    public void checkTable(final String objectName, final String identifire,
+     * @param validationType            validation type code please refer the above table for detailed
+     *            information
+     * @param expectedvale            value\value string which will be provided by the user to
+     *            specify the expected result
+     * @param stopOnFaliure            specify the continuation of the test script if the validation
+     *            fails
+     */
+    public final void checkTable(final String objectName, final String identifire,
             final String validationType, final Object expectedvale,
             final boolean stopOnFaliure) {
-        this.identifire = identifire;
+        this.locatorIdentifire = identifire;
         checkTable(objectName, validationType, expectedvale, stopOnFaliure);
-        this.identifire = "";
+        this.locatorIdentifire = "";
 
     }
 
-    public int getObjectCount(final String objectName, final String identifire) {
-        this.identifire = identifire;
+    /**
+     * Gets the object count.
+     *
+     * @param objectName the object name
+     * @param identifire the identifire
+     * @return the object count
+     */
+    public final int getObjectCount(final String objectName, final String identifire) {
+        this.locatorIdentifire = identifire;
         int objCount = getObjectCount(objectName);
-        this.identifire = "";
+        this.locatorIdentifire = "";
         return objCount;
     }
 
@@ -3726,27 +3490,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * If no option locator prefix is provided, the default behaviour is to
      * match on label. <br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
      *            scripter <br>
      * <br>
-     * @param value
-     *            : value to be selected from the drpodown <br>
-     *            If working with multi-select list box, to select multiple
-     *            items <br>
-     *            give the multiple values seperated by <b> # </b> symbol e.g. <br>
-     * <br>
-     * 
-     *            for selecting single option : apple <br>
-     *            for selecting multiple options : apple#orange#mango <br>
-     * <br>
-     * 
-     * */
-    public int getObjectCount(final String objectName) {
+     * @return the object count
+     */
+    public final int getObjectCount(final String objectName) {
         int counter = getRetryCount();
         int objectCount = 0;
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         WebDriver driver = getDriver();
         try {
 
@@ -3773,8 +3526,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                                     + objectName + ") [" + objectID + "] ");
                     break;
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
-                    
+                    pause(retryInterval);
+
                     if (!(counter > 0)) {
                         e.printStackTrace();
                         reportresult(true, "GET OBJECT COUNT :" + objectName
@@ -3975,30 +3728,24 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * </tbody>
      * </table>
-     * 
-     * @param objectName
-     *            Logical name of the object
-     * @param validationType
-     *            validation type code please refer the above table for detailed
-     *            information
-     * @param expectedvale
-     *            value\value string which will be provided by the user to
-     *            specify the expected result
-     * @param stopOnFaliure
-     *            specify the continuation of the test script if the validation
+     *
+     * @param objectName            Logical name of the object
+     * @param validationTypeS the validation type s
+     * @param objExpectedvale the obj expectedvale
+     * @param stopOnFaliure            specify the continuation of the test script if the validation
      *            fails
      */
-    public void checkTable(final String objectName,
+    public final void checkTable(final String objectName,
             final String validationTypeS, final Object objExpectedvale,
             final boolean stopOnFaliure) {
 
         TableValidationType validationType =
                 TableValidationType.valueOf(validationTypeS);
         String expectedvale = checkNullObject(objExpectedvale, "CHECK TABLE");
-        
+
         String objectID = "";
         // load the actual object id from the OR
-        objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         try {
             // checks the element presence
             checkForNewWindowPopups();
@@ -4009,19 +3756,24 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             try {
                 if (validationType == TableValidationType.ROWCOUNT) {
 
-                    validateTableRowCount(element, objectID, expectedvale, stopOnFaliure);
+                    validateTableRowCount(element, objectID, expectedvale,
+                            stopOnFaliure);
                 } else if (validationType == TableValidationType.COLCOUNT) {
 
-                    validateTableColCount(element, objectID, expectedvale, stopOnFaliure);
+                    validateTableColCount(element, objectID, expectedvale,
+                            stopOnFaliure);
                 } else if (validationType == TableValidationType.TABLEDATA) {
 
-                    compareTableData(element, objectID, expectedvale, stopOnFaliure);
+                    compareTableData(element, objectID, expectedvale,
+                            stopOnFaliure);
                 } else if (validationType == TableValidationType.RELATIVE) {
 
-                    validateTableOffset(element, objectID, expectedvale, stopOnFaliure);
+                    validateTableOffset(element, objectID, expectedvale,
+                            stopOnFaliure);
                 } else if (validationType == TableValidationType.TABLECELL) {
 
-                    validateCellValue(element, objectID, expectedvale, stopOnFaliure);
+                    validateCellValue(element, objectID, expectedvale,
+                            stopOnFaliure);
                 }
             } catch (Exception e) {
                 // waiting for the maximum amount of waiting time before
@@ -4050,12 +3802,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Validate table cell value function
-     * @param element 
-     * 
-     * */
-    private void validateCellValue(final WebElement element, final String objectName,
-            final String expectedvalue, final boolean fail) throws Exception {
+     * Validate table cell value function.
+     *
+     * @param element the element
+     * @param objectName the object name
+     * @param expectedvalue the expectedvalue
+     * @param fail the fail
+     * @throws Exception the exception
+     */
+    private void validateCellValue(final WebElement element,
+            final String objectName, final String expectedvalue,
+            final boolean fail) throws Exception {
 
         ArrayList<String> inputStringArray;
         boolean failedOnce = false;
@@ -4064,6 +3821,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         String cellText = "";
         String result = "";
         ArrayList<String> htmlTable = new ArrayList<String>();
+        final int inputStringItems = 3;
 
         inputStringArray =
                 new ArrayList<String>(Arrays.asList(expectedvalue.split(
@@ -4076,7 +3834,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
         inputStringArray = tempInputTable;
 
-        if (inputStringArray.size() < 3) {
+        if (inputStringArray.size() < inputStringItems) {
             failedOnce = true;
             result = " verification data not provided correctly";
             reportresult(true, "CHECK TABLE :TABLE CELL", "FAILED", objectName
@@ -4094,7 +3852,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                                 .toArray(), ",");
 
         try {
-            htmlTable = getAppTableRow(element, objectName, row);
+            htmlTable = getAppTableRow(element, row);
         } catch (Exception ex) {
             failedOnce = true;
             result =
@@ -4102,7 +3860,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                             + " cannot be found in the actual table \n";
         }
 
-        int verifyIndex = col;// get the sequential index of the value to be
+        int verifyIndex = col; // get the sequential index of the value to be
                               // verified
 
         String verifyValue = "";
@@ -4141,12 +3899,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Validate table offset function
-     * @param element 
-     * 
-     * */
-    private void validateTableOffset(final WebElement element, final String objectName,
-            final String expectedvalue, final boolean fail) throws Exception {
+     * Validate table offset function.
+     *
+     * @param element the element
+     * @param objectName the object name
+     * @param expectedvalue the expectedvalue
+     * @param fail the fail
+     * @throws Exception the exception
+     */
+    private void validateTableOffset(final WebElement element,
+            final String objectName, final String expectedvalue,
+            final boolean fail) throws Exception {
 
         ArrayList<String> inputStringArray;
         String parentText = "";
@@ -4156,7 +3919,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         String result = "";
         ArrayList<String> htmlTable;
 
-        htmlTable = getAppTable(element, objectName);
+        htmlTable = getAppTable(element);
         StringBuilder resultBuilder = new StringBuilder();
 
         ArrayList<String> inputStringCurrArray;
@@ -4185,10 +3948,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             parentText = inputStringCurrArray.get(0);
             offset = Integer.valueOf(inputStringCurrArray.get(1));
             cellText = inputStringCurrArray.get(2);
-            resultBuilder.append(checkIfTheTableContainsTheExpectedRelativeValue(htmlTable, parentText, offset, cellText));
+            resultBuilder
+                    .append(checkIfTheTableContainsTheExpectedRelativeValue(
+                            htmlTable, parentText, offset, cellText));
         }
 
-        if (!resultBuilder.toString().isEmpty()) {
+        result = resultBuilder.toString();
+        if (!result.isEmpty()) {
             reportresult(fail, "CHECK TABLE :RELATIVE", "FAILED", objectName
                     + "'s  RELATIVE validation " + " is not as expected  "
                     + result);
@@ -4202,7 +3968,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
 
     }
-    
+
+    /**
+     * Check if the table contains the expected relative value.
+     *
+     * @param htmlTable the html table
+     * @param parentText the parent text
+     * @param offset the offset
+     * @param cellText the cell text
+     * @return the string
+     */
     private String checkIfTheTableContainsTheExpectedRelativeValue(
             final List<String> htmlTable, final String parentText,
             final int offset, final String cellText) {
@@ -4245,15 +4020,19 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
         return resultBuilder.toString();
     }
-    
 
     /**
-     * Validate table row count function
-     * @param element 
-     * 
-     * */
-    private int validateTableRowCount(final WebElement element, final String TableName,
-            final String expectedValue, final boolean fail) {
+     * Validate table row count function.
+     *
+     * @param element the element
+     * @param tableName the Table name
+     * @param expectedValue the expected value
+     * @param fail the fail
+     * @return the int
+     */
+    private int validateTableRowCount(final WebElement element,
+            final String tableName, final String expectedValue,
+            final boolean fail) {
         /* TableName = TableName.replace("\"", "\\\""); */
         int rowCount = 0;
         try {
@@ -4266,12 +4045,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
             if (rowCount == Integer.parseInt(expectedValue)) {
                 reportresult(true, "CHECK TABLE :ROW COUNT", "PASSED",
-                        "CHECK TABLE :ROW COUNT" + TableName
+                        "CHECK TABLE :ROW COUNT" + tableName
                                 + "| Input Value = " + expectedValue);
 
             } else {
                 reportresult(true, "CHECK TABLE :ROW COUNT", "FAILED",
-                        "CHECK TABLE :ROW COUNT" + TableName + "| Expected :"
+                        "CHECK TABLE :ROW COUNT" + tableName + "| Expected :"
                                 + expectedValue + " |Actual : " + rowCount);
                 checkTrue(false, fail,
                         "CHECK TABLE [ROWCOUNT]  : Row count mismatch Expected:"
@@ -4289,11 +4068,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * validate Table Column count function
-     * @param element 
+     * validate Table Column count function.
+     *
+     * @param element the element
+     * @param tableName the Table name
+     * @param expectedValue the expected value
+     * @param fail the fail
+     * @return the int
      */
-    private int validateTableColCount(final WebElement element, final String TableName,
-            final String expectedValue, final boolean fail) {
+    private int validateTableColCount(final WebElement element,
+            final String tableName, final String expectedValue,
+            final boolean fail) {
 
         List<WebElement> rowElements = null;
         int actualdValue = 0;
@@ -4312,7 +4097,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
             if (actualdValue == Integer.parseInt(expectedValue)) {
                 reportresult(true, "CHECK TABLE :COLUMN COUNT ", "PASSED",
-                        " CHECK TABLE COLUMN COUNT" + TableName
+                        " CHECK TABLE COLUMN COUNT" + tableName
                                 + " Input Value = " + expectedValue);
 
             } else {
@@ -4335,12 +4120,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Reads the online table and load the contents to an arraylist
-     * @param element 
-     * 
-     * */
-    private ArrayList<String> getAppTable(final WebElement element, final String locator)
-            throws Exception {
+     * Reads the online table and load the contents to an arraylist.
+     *
+     * @param element the element
+     * @return the app table
+     * @throws Exception the exception
+     */
+    private ArrayList<String> getAppTable(final WebElement element) throws Exception {
 
         WebElement rowElement;
         List<WebElement> columnElements;
@@ -4400,12 +4186,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Reads the online table and load the contents to an arraylist
-     * @param element 
-     * 
-     * */
-    private ArrayList<String> getAppTableRow(final WebElement element, final String locator, final int row)
-            throws Exception {
+     * Reads the online table and load the contents to an arraylist.
+     *
+     * @param element the element
+     * @param row the row
+     * @return the app table row
+     * @throws Exception the exception
+     */
+    private ArrayList<String> getAppTableRow(final WebElement element, final int row) throws Exception {
 
         List<WebElement> rowElements;
         List<WebElement> colElements;
@@ -4445,17 +4233,21 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Checks in a table whether the given table is in
-     * @param element 
-     * 
-     * */
-    private void compareTableData(final WebElement element, final String objectName,
-            final String expectedvale, final boolean fail) {
+     * Checks in a table whether the given table is in.
+     *
+     * @param element the element
+     * @param objectName the object name
+     * @param expectedvale the expectedvale
+     * @param fail the fail
+     */
+    private void compareTableData(final WebElement element,
+            final String objectName, final String expectedvale,
+            final boolean fail) {
 
         ArrayList<String> htmlTable;
         ArrayList<String> inputTable;
         try {
-            htmlTable = getAppTable(element, objectName);
+            htmlTable = getAppTable(element);
 
             inputTable =
                     new ArrayList<String>(Arrays.asList(expectedvale
@@ -4494,11 +4286,35 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
     }
 
+    /**
+     * The Enum LocatorType.
+     */
     public enum LocatorType {
-        CLASSNAME, CSS, ID, LINK, NAME, TAGNAME, XPATH;
+        
+        /** The classname. */
+        CLASSNAME, 
+ /** The css. */
+ CSS, 
+ /** The id. */
+ ID, 
+ /** The link. */
+ LINK, 
+ /** The name. */
+ NAME, 
+ /** The tagname. */
+ TAGNAME, 
+ /** The xpath. */
+ XPATH;
     }
 
-    public By getLocatorType(final String objectID) throws Exception {
+    /**
+     * Gets the locator type.
+     *
+     * @param objectID the object id
+     * @return the locator type
+     * @throws Exception the exception
+     */
+    public final By getLocatorType(final String objectID) throws Exception {
 
         String typeString = "";
         String ref = "";
@@ -4539,12 +4355,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
 
         throw new Exception("Invalid Locator Type Passed " + ref);
-        
-    }   
 
-    public WebElement objectLocator(final String objectID) throws Exception {
+    }
 
-        System.out.println("INFO : Finding Element [ " + objectID + " ]");
+    /**
+     * Object locator.
+     *
+     * @param objectID the object id
+     * @return the web element
+     * @throws Exception the exception
+     */
+    public final WebElement objectLocator(final String objectID) throws Exception {
+
+        Logger log = getLog();
+        log.info("INFO : Finding Element [ " + objectID + " ]");
         WebDriver driver = getDriver();
         String typeString = "";
         String ref = "";
@@ -4583,7 +4407,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
             return driver.findElement(By.name(ref));
         }
-        getLog().error("Invalid Locator Type Passed "
+        log.error(
+                "Invalid Locator Type Passed "
                         + objectID
                         + ". Expected locator types : XPATH, CSS, ID, NAME, LINK, TAGNAME, CLASSNAME");
         throw new Exception("Invalid Locator Type Passed " + ref);
@@ -4591,65 +4416,106 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * internal method which actually checks whether the given element is exists
-     * 
-     **/
+     * internal method which actually checks whether the given element is exists.
+     *
+     * @param searchPath the search path
+     * @return the web element
+     * @throws Exception the exception
+     */
     private WebElement checkElementPresence(final String searchPath)
             throws Exception {
         WebDriver driver = getDriver();
         WebElement webElement = null;
         String locator = searchPath;
-
+        final Logger log = getLog();
         int count = getRetryCount();
-        boolean elementPresent = false;
-
         setCommandStartTime(getCurrentTime());
-        do {
+        final By searchBy = getLocatorType(locator);
+        final Long retryMillis = 1000L;
+
+        try {
+            
+            Function<WebDriver, WebElement> findElementFunction = 
+                    new FindElementFunction<WebDriver, WebElement>(searchBy);
+            
+            Wait<WebDriver> wait =
+                    new FluentWait<WebDriver>(driver)
+                            .withTimeout((count * retryMillis),
+                                    TimeUnit.MILLISECONDS)
+                            .pollingEvery(retryInterval, TimeUnit.MILLISECONDS)
+                            .ignoring(NoSuchElementException.class)
+                            .ignoring(WebDriverException.class);
+
+            webElement = wait.until(findElementFunction);
+               
+        } catch (Exception e) {
+            log.error("Element [ " + searchPath + " ] Not Found", e);
+        }
+
+        if (webElement != null) {
             try {
-                // elementPresent = selenium.isElementPresent(locator);
-                webElement = objectLocator(locator);
-                if (webElement != null) {
-                    System.out.println("INFO : Element [ " + searchPath
-                            + " ] Found");
-                    elementPresent = true;
-                }
-
-                if (elementPresent) {
-                    try {
-                        JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
-                        jsExecutor.executeScript(
-                                "arguments[0].scrollIntoView(false);",
-                                webElement);
-                    } catch (Exception ex) {
-                        getLog().error("Exception occured while scrolling to the element.", ex);
-                    }
-                    break;
-                }
+                log.info("Element [ " + searchBy.toString()
+                        + " ] Found");
+                JavascriptExecutor jsExecutor = (JavascriptExecutor) driver;
+                jsExecutor.executeScript("arguments[0].scrollIntoView(false);",
+                        webElement);
             } catch (Exception ex) {
-                pause(WAITTIME);
+                log.error("Exception occured while scrolling to the element.",
+                        ex);
             }
-
-        } while (!elementPresent && --count > 0);
-
-        if (!elementPresent && count < 1) {
-            System.out.println("ERROR : Element [ " + searchPath
-                    + " ] Not Found");
+        } else {
             throw new Exception("Element " + searchPath);
         }
 
         return webElement;
     }
+    
+    /**
+     * The FindElementFunction inner class.
+     * */
+    public static class FindElementFunction < T, K > implements
+            Function<WebDriver, WebElement> {
+        /** The search by locator. */
+        private By searchByLocator;
+
+        /**
+         * The constructor for inner class.
+         * 
+         * @param by
+         *            The by locator
+         * */
+        public FindElementFunction(final By by) {
+            searchByLocator = by;
+        }
+
+        /**
+         * The apply method which returns a web element.
+         * 
+         * @param driver
+         *            the webdriver
+         * @return The web element found
+         * */
+        @Override
+        public final WebElement apply(final WebDriver driver) {
+            getLog().info(
+                    "Finding Element [ " + searchByLocator.toString() + " ]");
+            return driver.findElement(searchByLocator);
+        }
+    }
 
     /**
      * Internal method which checks whether the option is available in the
-     * select box
-     * 
-     * */
-    private boolean checkSelectOptions(final String searchPath,
-            final String valuetoBeSelect, final Select selectElement,
+     * select box.
+     *
+     * @param valuetoBeSelect the valueto be select
+     * @param actualOptions the actual options
+     * @return true, if check select options
+     * @throws Exception the exception
+     */
+    private boolean checkSelectOptions(final String valuetoBeSelect,
             final String[] actualOptions) throws Exception {
 
-        String optionList[] = valuetoBeSelect.split("#");
+        String[] optionList = valuetoBeSelect.split("#");
         boolean elementPresent = false;
         boolean multiSelect = false;
         int notFoundCount = 0;
@@ -4665,11 +4531,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                             isMatchingPattern(option.substring(
                                     option.indexOf(':') + 1, option.length()),
                                     actualOption);
-                }
-                if (!elementPresent) {
+                    if (elementPresent) {
+                        break;
+                    }
                     notFoundCount++;
                     notFoundItems.append(option).append(",");
                 }
+
             } else if (option.startsWith("index=")) {
                 int indexNo = Integer.parseInt(option.replace("index=", ""));
                 if (actualOptions.length <= indexNo) {
@@ -4695,9 +4563,6 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         return multiSelect;
 
     }
-    
-    
-    
 
     /**
      * Validating the value of the given property of the object, further
@@ -4705,24 +4570,15 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * besed on value of the <b> stopExecution </b> parameter provided by the
      * user <br>
      * <br>
-     * in the web page
-     * @param element 
-     * 
-     * @param searchPath
-     *            : The logical path of the object
-     * @param propertyname
-     *            : Name of the object property to be validated
-     * @param expectedvale
-     *            : Expected property value of the object
-     * @param stopOnFailure
-     *            : if <I> true </I> : stop the execution after the failure <br>
-     *            if <I> false </I>: Continue the execution after the failure <br>
-     * 
-     * 
-     * 
-     * */
-    private String validateObjectProperty(final WebElement element, final String propertyname)
-            throws Exception {
+     * in the web page.
+     *
+     * @param element the element
+     * @param propertyname            : Name of the object property to be validated
+     * @return the string
+     * @throws Exception the exception
+     */
+    private String validateObjectProperty(final WebElement element,
+            final String propertyname) throws Exception {
         String attributeValue = "";
         if ("textContent".equals(propertyname)) {
             try {
@@ -4759,9 +4615,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     /**
      * evaluate the given logical condition and report the result Further
      * execution or termination of test will be decided by the value of isAssert
-     * variable
-     * 
-     **/
+     * variable.
+     *
+     * @param checkingCondition the checking condition
+     * @param isAssert the is assert
+     * @param failedMessage the failed message
+     */
     private void checkTrue(final boolean checkingCondition,
             final boolean isAssert, final String failedMessage) {
         String errorMessage = getErrorMessages();
@@ -4792,22 +4651,26 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Retrieve the data table for the parameterized executin
-     * */
-    public DataTable getTable(final String name) {
+     * Retrieve the data table for the parameterized executin.
+     *
+     * @param name the name
+     * @return the table
+     */
+    public final DataTable getTable(final String name) {
         File file;
         if (tables == null) {
             File tempFile = new File("tempFile");
-            
+
             if (tempFile.getAbsolutePath().contains("grid")) {
                 file =
                         new File("grid" + File.separator
                                 + "selenium-grid-1.0.6" + File.separator
                                 + "data" + File.separator + "DataTables.xml");
-                
+
             } else {
-                file = new File("data" + File.separator + "DataTables.xml");
-                
+                file = new File("src" + File.separator + "main" + File.separator 
+                        + "resources" + File.separator + "data" + File.separator + "DataTables.xml");
+
             }
             tables = DataTablesParser.parseTables(file);
         }
@@ -4815,10 +4678,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * read the DataTable and convert it to a two dimentional array
-     * 
-     * */
-    public Object[][] getTableArray(final DataTable table) {
+     * read the DataTable and convert it to a two dimentional array.
+     *
+     * @param table the table
+     * @return the table array
+     */
+    public final Object[][] getTableArray(final DataTable table) {
 
         Object[][] tabArray = null;
         Integer rowcount = table.getRowCount();
@@ -4828,7 +4693,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
         for (int row = 0; row < rowcount; row++) {
             for (int col = 0; col < colcount; col++) {
-                tabArray[row][col] = table.get(row, col);
+                if ("Int".equals(table.getDataType(col))) {
+                    tabArray[row][col] = table.intValue(row, col);
+                } else if ("Boolean".equals(table.getDataType(col))) {
+                    tabArray[row][col] = table.booleanValue(row, col);
+                } else if ("String".equals(table.getDataType(col))) {
+                    tabArray[row][col] = table.get(row, col);
+                }
             }
 
         }
@@ -4838,9 +4709,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Retrieving all the browser titles opened
-     **/
-    public Set<String> getAllWindows() throws Exception {
+     * Retrieving all the browser titles opened.
+     *
+     * @return the all windows
+     * @throws Exception the exception
+     */
+    public final Set<String> getAllWindows() throws Exception {
 
         WebDriver driver = getDriver();
         try {
@@ -4861,7 +4735,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      *            : Time to wait for goBack command to complete
      * 
      * */
-    public void goBack(final String waitTime) {
+    public final void goBack(final String waitTime) {
         WebDriver driver = getDriver();
         try {
             driver.navigate().back();
@@ -4876,13 +4750,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Retrieves a String value previously stored
-     * 
-     * @param key
-     *            : key for the value to be retrieved
+     * Retrieves a String value previously stored.
+     *
+     * @param key            : key for the value to be retrieved
      * @return String value stored for the given <b>key</b>
      */
-    public String retrieveString(final String key) {
+    public final String retrieveString(final String key) {
         return retrieve(key, "String");
     }
 
@@ -4891,15 +4764,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * <br>
      * <b>Fails</b> if, <li>the given key is not stored previously</li> <li>
      * stored value type mismatches the type expected</li> <br>
-     * <br>
-     * 
-     * @param key
-     *            : key for the value to be retrieved
-     * @param type
-     *            : type of the previously stored value
+     * <br>.
+     *
+     * @param key            : key for the value to be retrieved
+     * @param type            : type of the previously stored value
      * @return value for the particular <b>key</b>
      */
-    public String retrieve(final String key, final String type) {
+    public final String retrieve(final String key, final String type) {
 
         String value = null;
         String projectPropertiesLocation = "project_data.properties";
@@ -4956,13 +4827,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * Retrieves an int value previously stored <br>
      * <br>
      * <b>Fails</b> if, <li>the stored value is not parsable to int</li> <br>
-     * <br>
-     * 
-     * @param key
-     *            : key for the value to be retrieved
+     * <br>.
+     *
+     * @param key            : key for the value to be retrieved
      * @return int value stored for the given <b>key</b> , default is -1
      */
-    public int retrieveInt(final String key) {
+    public final int retrieveInt(final String key) {
         String value = retrieve(key, "Int");
         try {
             if (value != null) {
@@ -4982,13 +4852,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * Retrieves a float value previously stored <br>
      * <br>
      * <b>Fails</b> if, <li>the stored value is not parsable to float</li> <br>
-     * <br>
-     * 
-     * @param key
-     *            : key for the value to be retrieved
+     * <br>.
+     *
+     * @param key            : key for the value to be retrieved
      * @return float value stored for the given <b>key</b> , default is -1
      */
-    public float retrieveFloat(final String key) {
+    public final float retrieveFloat(final String key) {
         String value = retrieve(key, "Float");
         try {
             if (value != null) {
@@ -5008,13 +4877,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * Retrieves a boolean value previously stored <br>
      * <br>
      * <b>Fails</b> if, <li>the stored value is not parsable to boolean</li> <br>
-     * <br>
-     * 
-     * @param key
-     *            : key for the value to be retrieved
+     * <br>.
+     *
+     * @param key            : key for the value to be retrieved
      * @return boolean value stored for the given <b>key</b> , default is false
      */
-    public boolean retrieveBoolean(final String key) {
+    public final boolean retrieveBoolean(final String key) {
         String value = retrieve(key, "Boolean");
         if ("true".equalsIgnoreCase(value) || "false".equalsIgnoreCase(value)) {
             return Boolean.parseBoolean(value);
@@ -5034,16 +4902,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * <b>Fails</b> if, <li>data store file cannot be created</li> <li>data
      * cannot be written to file</li> <li>type of the value to be stored
      * mismatches the type specified</li> <br>
-     * <br>
-     * 
-     * @param key
-     *            : key for the value to be stored
-     * @param type
-     *            : type of value to be stored
-     * @param value
-     *            : value to be stored
+     * <br>.
+     *
+     * @param key            : key for the value to be stored
+     * @param type            : type of value to be stored
+     * @param objValue the obj value
      */
-    public void store(final String key, final String type, final Object objValue) {
+    public final void store(final String key, final String type, final Object objValue) {
         String value = checkNullObject(objValue, "STORE");
         String projectPropertiesLocation = "project_data.properties";
         Properties prop = new Properties();
@@ -5051,24 +4916,24 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         FileOutputStream fos = null;
         File file = new File(projectPropertiesLocation);
         try {
-            if (!file.exists()) {
-                if(file.createNewFile()){
-                    getLog().error("Cannot create a new file in the intended location. "
-                            + ""+file.getAbsolutePath());
-                }                    
+            if (!file.exists() && !file.createNewFile()) {
+
+                getLog().error(
+                        "Cannot create a new file in the intended location. "
+                                + "" + file.getAbsolutePath());
             }
             fis = new FileInputStream(file.getAbsoluteFile());
             prop.load(fis);
             prop.setProperty(key + "_Val", value);
             prop.setProperty(key + "_Type", type);
-            
+
             checkStoreValueType(type, value);
-            
+
             fos = new FileOutputStream(projectPropertiesLocation);
             prop.store(fos, "project settings");
             reportresult(true, "STORE Value : " + value + " " + type + " "
                     + key + " :", "PASSED", value);
-            
+
         } catch (IOException e) {
             String errorString = e.getMessage();
             reportresult(true, "STORE :" + value + " : " + type + " : " + key
@@ -5077,16 +4942,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     + " : " + key + " :" + "FAILED " + errorString);
         } catch (NumberFormatException e) {
             String errorString = e.getMessage();
-            reportresult(true, "STORE value : " + value + " Int" + " "
-                    + key + " :", "FAILED", errorString);
-            checkTrue(false, true, "STORE value " + value + " Int " + " "
-                    + key + " :" + "FAILED " + errorString);
+            reportresult(true, "STORE value : " + value + " Int" + " " + key
+                    + " :", "FAILED", errorString);
+            checkTrue(false, true, "STORE value " + value + " Int " + " " + key
+                    + " :" + "FAILED " + errorString);
         } catch (IllegalArgumentException e) {
             String errorString = e.getMessage();
-            reportresult(true, "STORE Value type : "+ type + " " + key + " :",
-                    "FAILED", "Cannot parse value to the expected format. Error : "+errorString);
+            reportresult(true, "STORE Value type : " + type + " " + key + " :",
+                    "FAILED",
+                    "Cannot parse value to the expected format. Error : "
+                            + errorString);
             checkTrue(false, true, "STORE value type " + type + " " + key
-                    + " :" + "FAILED " + "Cannot parse value to the expected format. Error : "+errorString);
+                    + " :" + "FAILED "
+                    + "Cannot parse value to the expected format. Error : "
+                    + errorString);
         } finally {
             if (fis != null) {
                 try {
@@ -5104,9 +4973,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             }
         }
     }
-    
-    
-    private void checkStoreValueType(String type, String value) {
+
+    /**
+     * Check store value type.
+     *
+     * @param type the type
+     * @param value the value
+     */
+    private void checkStoreValueType(final String type, final String value) {
         try {
             if ("Int".equalsIgnoreCase(type)) {
                 Integer.parseInt(value);
@@ -5115,7 +4989,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         || "false".equalsIgnoreCase(value)) {
                     Boolean.parseBoolean(value);
                 } else {
-                    throw new IllegalArgumentException("Cannot convert to boolean value "+value);
+                    throw new IllegalArgumentException(
+                            "Cannot convert to boolean value " + value);
                 }
             } else if ("Float".equalsIgnoreCase(type)) {
                 Float.parseFloat(value);
@@ -5124,11 +4999,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             throw new IllegalArgumentException(e.getMessage(), e);
         }
     }
-    
 
-   // private boolean isPopupHandled;
+    // private boolean isPopupHandled;
 
-    public void handlePopup(final String actionFlow, final String waitTime)
+    /**
+     * Handle popup.
+     *
+     * @param actionFlow the action flow
+     * @param waitTime the wait time
+     * @throws Exception the exception
+     */
+    public final void handlePopup(final String actionFlow, final String waitTime)
             throws Exception {
         initRobot();
         clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
@@ -5140,7 +5021,6 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             @Override
             public void run() {
 
-                
                 try {
                     pause(Integer.parseInt(waitTimep));
                 } catch (Exception e1) {
@@ -5157,7 +5037,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     String verificationErrors = "";
                     String actualAlertText = "";
                     WebDriver driver = getDriver();
-                    String commands[] = inputStringp.split("\\|");
+                    String[] commands = inputStringp.split("\\|");
                     try {
                         actualAlertText = driver.switchTo().alert().getText();
                     } catch (NoAlertPresentException e) {
@@ -5168,8 +5048,10 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         checkTrue(false, true,
                                 "HANDLE POPUP : failed. No Alert Present");
                     }
-                    
-                    verificationErrors = executeHandlePopupCommands(driver, commands, actualAlertText);
+
+                    verificationErrors =
+                            executeHandlePopupCommands(driver, commands,
+                                    actualAlertText);
                     if (verificationErrors.isEmpty()) {
                         reportresult(true, "HANDLE POPUP :" + actualAlertText
                                 + "", "PASSED", "");
@@ -5190,14 +5072,22 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         newThread.start();
 
     }
-    
-    private String executeHandlePopupCommands(final WebDriver driver, String[] commands, String actualAlertText) {
-        
+
+    /**
+     * Execute handle popup commands.
+     *
+     * @param driver the driver
+     * @param commands the commands
+     * @param actualAlertText the actual alert text
+     * @return the string
+     */
+    private String executeHandlePopupCommands(final WebDriver driver,
+            final String[] commands, final String actualAlertText) {
+
         StringBuilder verificationErrorBuilder = new StringBuilder();
         boolean isPopupHandled = false;
         for (String command : commands) {
-            String commandString =
-                    command.toLowerCase(Locale.getDefault());
+            String commandString = command.toLowerCase(Locale.getDefault());
             if (commandString.startsWith("type=")) {
                 String typeStr =
                         command.substring(command.indexOf('=') + 1,
@@ -5209,10 +5099,10 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         command.substring(command.indexOf('=') + 1,
                                 command.length());
                 if (!verifyStr.equals(actualAlertText)) {
-                    verificationErrorBuilder.append("VERIFY TEXT failed. Actual : " + ""
-                            + actualAlertText
-                            + " Expected : " + verifyStr
-                            + " ");
+                    verificationErrorBuilder
+                            .append("VERIFY TEXT failed. Actual : " + ""
+                                    + actualAlertText + " Expected : "
+                                    + verifyStr + " ");
                 }
             } else if (commandString.startsWith("action=")) {
                 String actionStr =
@@ -5226,7 +5116,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     isPopupHandled = true;
                 }
             } else {
-                verificationErrorBuilder.append("Handle Popup command failed. Given input command ("
+                verificationErrorBuilder
+                        .append("Handle Popup command failed. Given input command ("
                                 + command
                                 + ")is not recognized. Supported commands : type, verify, action.");
             }
@@ -5237,9 +5128,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
         return verificationErrorBuilder.toString();
     }
-    
-    
-    private void insertNewWindowHandlesintoIndex(Set<String> currentWinHandles){
+
+    /**
+     * Insert new window handlesinto index.
+     *
+     * @param currentWinHandles the current win handles
+     */
+    private void insertNewWindowHandlesintoIndex(
+            final Set<String> currentWinHandles) {
         List<String> tempWindowHandleIndex = getOpenWindowHandleIndex();
         for (int i = 0; i < tempWindowHandleIndex.size(); i++) {
             String oldWinHandle = tempWindowHandleIndex.get(i);
@@ -5253,9 +5149,15 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
         setOpenWindowHandleIndex(tempWindowHandleIndex);
     }
-    
-    private void mergeCurrentWindowsWithNewWindowIndex(Set<String> currentWinHandles){
-        
+
+    /**
+     * Merge current windows with new window index.
+     *
+     * @param currentWinHandles the current win handles
+     */
+    private void mergeCurrentWindowsWithNewWindowIndex(
+            final Set<String> currentWinHandles) {
+
         List<String> tempOpenWindowHandles = getOpenWindowHandleIndex();
         for (String newWinHandle : currentWinHandles) {
             if (!tempOpenWindowHandles.contains(newWinHandle)) {
@@ -5266,7 +5168,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 }
             }
         }
-                    
+
         for (int i = 0; i < tempOpenWindowHandles.size(); i++) {
             String openWinHandle = tempOpenWindowHandles.get(i);
             if (!currentWinHandles.contains(openWinHandle)) {
@@ -5277,12 +5179,18 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 }
             }
         }
-        
+
         setOpenWindowHandleIndex(tempOpenWindowHandles);
     }
-    
-    private void removeClosedWindowHandlesFromIndex(Set<String> currentWinHandles){
-        
+
+    /**
+     * Removes the closed window handles from index.
+     *
+     * @param currentWinHandles the current win handles
+     */
+    private void removeClosedWindowHandlesFromIndex(
+            final Set<String> currentWinHandles) {
+
         List<String> tempAllWinHandles = getOpenWindowHandleIndex();
         currentWinHandles.removeAll(tempAllWinHandles);
 
@@ -5298,30 +5206,41 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
     }
 
+    /**
+     * Check for new window popups.
+     *
+     * @throws Exception the exception
+     */
     private void checkForNewWindowPopups() throws Exception {
 
         Set<String> currentWinHandles = getAllWindows();
         int currentWinHandleCount = currentWinHandles.size();
         int openWindowHandleCount = getOpenWindowHandleIndex().size();
         if (currentWinHandleCount < openWindowHandleCount) {
-            
+
             insertNewWindowHandlesintoIndex(currentWinHandles);
-            
+
         } else if (currentWinHandleCount == openWindowHandleCount) {
 
             mergeCurrentWindowsWithNewWindowIndex(currentWinHandles);
-            
+
         } else if (currentWinHandleCount > openWindowHandleCount) {
 
             removeClosedWindowHandlesFromIndex(currentWinHandles);
         }
     }
 
-    public void forceHandlePopup(final Robot robot, final String inputString) {
-        String commandSet[] = inputString.split("\\|");
+    /**
+     * Force handle popup.
+     *
+     * @param robot the robot
+     * @param inputString the input string
+     */
+    public final void forceHandlePopup(final Robot robot, final String inputString) {
+        String[] commandSet = inputString.split("\\|");
 
         for (String fullCommand : commandSet) {
-            pause(500);
+            pause(retryInterval);
             int commandIndex = 0;
             int inputIndex = 1;
             String command = fullCommand.split("=")[commandIndex];
@@ -5348,27 +5267,47 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         }
     }
 
+    /** The input stringp. */
     private String inputStringp;
+    
+    /** The wait timep. */
     private String waitTimep;
 
-    public void type(final String character) {
-        
+    /**
+     * Type.
+     *
+     * @param character the character
+     */
+    public final void type(final String character) {
+
         KeyCodes keys = new KeyCodes();
         doType(keys.getKeyCodes(character));
     }
 
+    /**
+     * Do type.
+     *
+     * @param keyCodes the key codes
+     */
     private void doType(final int... keyCodes) {
-        doType(keyCodes, 0, keyCodes.length);
+        doTypeKeys(keyCodes, 0, keyCodes.length);
     }
 
-    private void doType(final int[] keyCodes, final int offset, final int length) {
+    /**
+     * Do type.
+     *
+     * @param keyCodes the key codes
+     * @param offset the offset
+     * @param length the length
+     */
+    private void doTypeKeys(final int[] keyCodes, final int offset, final int length) {
         if (length == 0) {
             return;
         }
         Robot robot = getRobot();
         try {
             robot.keyPress(keyCodes[offset]);
-            doType(keyCodes, offset + 1, length - 1);
+            doTypeKeys(keyCodes, offset + 1, length - 1);
             robot.keyRelease(keyCodes[offset]);
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -5383,15 +5322,10 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * Example: A|B|C|ctrl|\n|\t|1|2|3 <br>
      * <br>
-     * 
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
      *            scripter
-     * @param value
-     *            : value to be typed in the object
-     * @param identifire
-     *            :
+     * @param identifire            :
      * 
      *            Identifier is us to increase the reusablity of the locator.
      *            The usage can be defined using the following examble <br>
@@ -5412,13 +5346,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      *            p1: www.virtusa.com<br>
      * <br>
      *            The absolute xpath will be dynamically generated
-     * */
+     * @param value            : value to be typed in the object
+     */
 
-    public void keyPress(final String objectName, final String identifire,
+    public final void keyPress(final String objectName, final String identifire,
             final Object value) {
-        this.identifire = identifire;
+        this.locatorIdentifire = identifire;
         keyPress(objectName, value);
-        this.identifire = "";
+        this.locatorIdentifire = "";
     }
 
     /**
@@ -5429,16 +5364,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * Example: A|B|C|ctrl|\n|\t|1|2|3 <br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
      *            scripter
-     * @param value
-     *            : value to be typed in the object
-     * 
-     * */
+     * @param objValue the obj value
+     */
 
-    public void keyPress(final String objectName, final Object objValue) {
+    public final void keyPress(final String objectName, final Object objValue) {
 
         String value = checkNullObject(objValue, "KEYPRESS");
         WebDriver driver = getDriver();
@@ -5447,7 +5379,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         String[] valueStringsArr = value.split("\\|");
 
         // Getting the actual object identification from the object map
-        String objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+        String objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
         try {
             // Check whether the element present
             checkForNewWindowPopups();
@@ -5484,8 +5416,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 } catch (StaleElementReferenceException staleElementException) {
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
-                    
+                    pause(retryInterval);
+
                     if (!(counter > 0)) {
                         e.printStackTrace();
                         reportresult(true, "KEYPRESS :" + objectName + "",
@@ -5504,7 +5436,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              * END DESCRIPTION
              */
         } catch (Exception e) {
-            
+
             // if any exception was raised, report a test failure
             e.printStackTrace();
             reportresult(true, "KEYPRESS :" + objectName + "", "FAILED",
@@ -5518,12 +5450,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Checks if a text in an element is according to a given pattern <br>
+     * Checks if a text in an element is according to a given pattern <br/>.
      * Can be used to check the value of labels, spans, inputs, etc.(Any element
      * which is containing inner text.)<br>
-     * 
-     * @param pattern
-     * <br>
+     *
+     * @param objectName            : Logical name of the web element assigned by the automation
+     *            scripter
+     * @param identifier the identifier
+     * @param pattern <br>
      *            For the pattern following format shouls be used.<br>
      * <br>
      *            For a uppercase string format should be <b>S</b><br>
@@ -5541,35 +5475,9 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      *            For verifying a date : 12/March/2013 <br>
      *            the pattern should be : dd/Ssss/dddd <br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the web element assigned by the automation
-     *            scripter
-     * @param identifire
-     *            :
-     * 
-     *            Identifier is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifier</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * */
-    
-    public void checkPattern(final String objectName, final String identifier,
+     */
+
+    public final void checkPattern(final String objectName, final String identifier,
             final String pattern) {
 
         String actualLocator =
@@ -5579,10 +5487,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         doCheckPattern(locator, pattern);
     }
 
-    public void checkPattern(final String objectName, final String pattern) {
+    /**
+     * Check pattern.
+     *
+     * @param objectName the object name
+     * @param pattern the pattern
+     */
+    public final void checkPattern(final String objectName, final String pattern) {
         checkPattern(objectName, "", pattern);
     }
-    
+
     /*public void checkPattern(final String objectName, final String identifire,
             final String pattern) {
         this.identifire = identifire;
@@ -5591,12 +5505,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }*/
 
     /**
-     * Checks if a text in an element is according to a given pattern <br>
+     * Checks if a text in an element is according to a given pattern <br/>.
      * Can be used to check the value of labels, spans, inputs, etc.(Any element
      * which is containing inner text.)<br>
-     * 
-     * @param pattern
-     * <br>
+     *
+     * @param locator            : Logical name of the web element assigned by the automation
+     *            scripter
+     * @param pattern <br>
      * <br>
      *            <b>(Simplified Use)</b><br>
      * <br>
@@ -5632,20 +5547,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * <br>
      * <br>
-     * 
-     * @param locator
-     *            : Logical name of the web element assigned by the automation
-     *            scripter
-     * 
-     * */
+     */
 
-    public void doCheckPattern(final ObjectLocator locator, String pattern) {
+    private void doCheckPattern(final ObjectLocator locator,
+            final String pattern) {
 
         int counter = getRetryCount();
         String returnValue = "";
 
         String regex = getRegexPattern(pattern);
-        
+
         // Getting the actual object identification from the object map
         String objectID = locator.getActualLocator();
         try {
@@ -5669,14 +5580,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     // Calling the actual command
                     returnValue = element.getText().trim();
                     if (returnValue.matches(regex)) {
-                        reportresult(true, "CHECKPATTERN :" + locator.getLogicalName()
-                                + "Input Value = " + pattern, "PASSED",
+                        reportresult(true,
+                                "CHECKPATTERN :" + locator.getLogicalName()
+                                        + "Input Value = " + pattern, "PASSED",
                                 "Input pattern : " + pattern);
                         break;
                     } else {
                         reportresult(
                                 true,
-                                "CHECKPATTERN :" + locator.getLogicalName() + "",
+                                "CHECKPATTERN :" + locator.getLogicalName()
+                                        + "",
                                 "FAILED",
                                 "Checked regex pattern ["
                                         + pattern
@@ -5692,12 +5605,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 } catch (StaleElementReferenceException staleElementException) {
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
                         e.printStackTrace();
                         String objectLogicalName = locator.getLogicalName();
-                        reportresult(true, "CHECKPATTERN :" + objectLogicalName + "",
-                                "FAILED",
+                        reportresult(true, "CHECKPATTERN :" + objectLogicalName
+                                + "", "FAILED",
                                 "CHECKPATTERN command cannot access :Element ("
                                         + objectLogicalName + ") [" + objectID
                                         + "] pattern = [" + pattern + "]");
@@ -5712,23 +5625,28 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              * END DESCRIPTION
              */
         } catch (Exception e) {
-            
+
             // if any exception was raised, report a test failure
             String objectLogicalName = locator.getLogicalName();
             e.printStackTrace();
-            reportresult(true, "CHECKPATTERN :" + objectLogicalName + "", "FAILED",
-                    "CHECKPATTERN command  :Element (" + objectLogicalName + ") ["
-                            + objectID + "] pattern = [" + pattern
-                            + "] not present");
+            reportresult(true, "CHECKPATTERN :" + objectLogicalName + "",
+                    "FAILED", "CHECKPATTERN command  :Element ("
+                            + objectLogicalName + ") [" + objectID
+                            + "] pattern = [" + pattern + "] not present");
             checkTrue(false, true, "CHECKPATTERN command  :Element ("
-                    + objectLogicalName + ") [" + objectID + "] pattern = [" + pattern
-                    + "] not present");
+                    + objectLogicalName + ") [" + objectID + "] pattern = ["
+                    + pattern + "] not present");
         }
     }
-    
-    
+
+    /**
+     * Gets the regex pattern.
+     *
+     * @param patternString the pattern string
+     * @return the regex pattern
+     */
     private String getRegexPattern(final String patternString) {
-        
+
         String regex = "";
         String pattern = patternString;
         if (pattern.toLowerCase(Locale.getDefault()).startsWith("regex=")) {
@@ -5760,19 +5678,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * Adds a new comment line to the VTAF test manager report.<br>
      * Functions only with the VTAF test manager report<br>
      * <br>
-     * 
-     * @param message
-     *            : Comment which should be added into the report.<br>
-     * <br>
-     * 
-     *            Ex :<br>
-     *            writeToReport("This is a comment")<br>
-     * <br>
-     **/
+     *
+     * @param objMessage the obj message
+     */
 
-    public void writeToReport(final Object objMessage) {
+    public final void writeToReport(final Object objMessage) {
         String message = checkNullObject(objMessage, "WRITE TO REPORT");
-        
+
         FileOutputStream fos = null;
         try {
             Properties prop = getProp();
@@ -5831,11 +5743,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * <br>
      *            The absolute xpath will be dynamically generated
      * */
-    public void mouseOver(final String objectName, final String identifire) {
+    public final void mouseOver(final String objectName, final String identifire) {
 
-        this.identifire = identifire;
+        this.locatorIdentifire = identifire;
         mouseOver(objectName);
-        this.identifire = "";
+        this.locatorIdentifire = "";
     }
 
     /**
@@ -5847,13 +5759,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * */
 
-    public void mouseOver(final String objectName) {
+    public final void mouseOver(final String objectName) {
         String objectID = "";
         int counter = getRetryCount();
         WebDriver driver = getDriver();
         try {
             // Retrieve the correct object locator from the object map
-            objectID = ObjectMap.getObjectSearchPath(objectName, identifire);
+            objectID = ObjectMap.getObjectSearchPath(objectName, locatorIdentifire);
             // first verify whether the element is present in the current web
             // pagge
             checkForNewWindowPopups();
@@ -5884,7 +5796,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 } catch (StaleElementReferenceException staleElementException) {
                     element = checkElementPresence(objectID);
                 } catch (Exception e) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
 
                         e.printStackTrace();
@@ -5903,7 +5815,6 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
              */
 
         } catch (Exception e) {
-            
 
             e.printStackTrace();
             /*
@@ -5931,33 +5842,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * frame with "index=2". You may also use a DOM expression to identify the
      * frame you want directly, like this: dom=frames["main"].frames["subframe"]<br>
      * <br>
-     * 
-     * @param objectName
-     *            : Logical name of the frame
-     * @param identifire
-     *            : identifire is us to increase the reusablity of the locator.
-     *            The usage can be defined using the following examble <br>
-     * <br>
-     *            assume the following locator is assigned the following logical
-     *            object name at the object map <br>
-     * <br>
-     *            <b>locator :</b> //a[@href='http://www.virtusa.com/']<br>
-     *            <b>Name :</b> virtusaLink<br>
-     * <br>
-     * 
-     *            If the user thinks that the locator can be made generalized,
-     *            it can be parameterized like the following <br>
-     * <br>
-     *            //a[@href='http://&LTp1&GT/']<br>
-     * <br>
-     *            once the method is used, pass the <b>identifire</b> as follows<br>
-     *            p1: www.virtusa.com<br>
-     * <br>
-     *            The absolute xpath will be dynamically generated
-     * 
-     * */
-    
-    public void selectFrame(final String frameName, final String identifier) {
+     *
+     * @param frameName the frame name
+     * @param identifier the identifier
+     */
+
+    public final void selectFrame(final String frameName, final String identifier) {
 
         String actualLocator =
                 ObjectMap.getObjectSearchPath(frameName, identifier);
@@ -5966,7 +5856,12 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         doSelectFrame(locator);
     }
 
-    public void selectFrame(final String objectName) {
+    /**
+     * Select frame.
+     *
+     * @param objectName the object name
+     */
+    public final void selectFrame(final String objectName) {
         selectFrame(objectName, "");
     }
 
@@ -5978,14 +5873,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 0-based index number; select the first frame with "index=0", or the third
      * frame with "index=2". You may also use a DOM expression to identify the
      * frame you want directly, like this: dom=frames["main"].frames["subframe"]
-     * 
-     * @param objectName
-     *            : locator for the iframe
-     * 
-     * 
-     * */
+     *
+     * @param locator the locator
+     */
 
-    public void doSelectFrame(final ObjectLocator locator) {
+    private void doSelectFrame(final ObjectLocator locator) {
         int counter = getRetryCount();
         int frameIndex = -1;
         WebElement element = null;
@@ -6014,8 +5906,8 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     if (objectIDValue.startsWith("index=")) {
                         frameIndex =
                                 Integer.parseInt(objectID.substring(
-                                        objectID.indexOf('=') + 1, objectID.length())
-                                        .trim());
+                                        objectID.indexOf('=') + 1,
+                                        objectID.length()).trim());
                         target = getDriver().switchTo();
                         target.defaultContent();
                         target.frame(frameIndex);
@@ -6031,15 +5923,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         target = getDriver().switchTo();
                         target.frame(element);
                     }
-                    
+
                     reportresult(true, "SELECT FRAME :" + locator + "",
                             "PASSED", "");
                     break;
                 } catch (Exception e) {
 
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
 
-                    
                     if (!(counter > 0)) {
                         e.printStackTrace();
                         reportresult(true, "SELECT FRAME :" + locator + "",
@@ -6070,38 +5961,36 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     /**
      * Performs a Java robot click on the specific coordinates. <br>
-     * 
-     * @param screenWidht
-     *            : Screen width of the of the executing computer screen
-     * @param screeHigt
-     *            : Screen height of the of the executing computer screen
-     * @param xCordinate
-     *            : X coordinate of the element in the screen
-     * @param yCordinate
-     *            : Y coordinate of the element in the screen
-     * 
-     * */
+     *
+     * @param resolution the resolution
+     * @param coordinates the coordinates
+     * @param waitTime the wait time
+     * @throws Exception the exception
+     */
 
-    public void mouseMoveAndClick(String resolution, final String coordinates,
+    public final void mouseMoveAndClick(final String resolution, final String coordinates,
             final String waitTime) throws Exception {
-
-        if (resolution.startsWith("prop=")) {
+        
+        String res = resolution;
+        final int f11KeyCode = KeyEvent.VK_F11;
+        final int optimumPauseBetweenkeyCombs = 10;
+        if (res.startsWith("prop=")) {
 
             String resolutionFromProp =
-                    getExecProps().getProperty((resolution.split("prop=")[1]));
+                    getExecProps().getProperty((res.split("prop=")[1]));
             if (resolutionFromProp != null) {
-                resolution = resolutionFromProp;
+                res = resolutionFromProp;
             } else {
                 reportresult(true, "MOUSE MOVE AND CLICK:", "FAILED",
                         "MOUSE MOVE AND CLICK command: Invalid property key value passed : "
-                                + resolution);
+                                + res);
                 checkTrue(false, true,
                         "MOUSE MOVE AND CLICK command: Invalid property key value passed : "
-                                + resolution);
+                                + res);
             }
         }
 
-        String[] resArr = resolution.split(",");
+        String[] resArr = res.split(",");
         String[] coordinatesArr = coordinates.split(",");
 
         float screenWidht = Float.parseFloat(resArr[0]);
@@ -6121,11 +6010,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
         int xCordinateAutual = (int) calWidth(screenWidht, xCordinate);
         int yCordinateAutual = (int) calHight(screeHigt, yCordinate);
-
-        robot.keyPress(KeyEvent.VK_F11);
-        robot.delay(10);
-        robot.keyRelease(KeyEvent.VK_F11);
-        pause(2000);
+        
+        robot.keyPress(f11KeyCode);
+        robot.delay(optimumPauseBetweenkeyCombs);
+        robot.keyRelease(f11KeyCode);
+        pause(retryInterval);
 
         // Mouse Move
         robot.mouseMove(xCordinateAutual, yCordinateAutual);
@@ -6134,50 +6023,57 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         if ("".equals(command)) {
 
             robot.mousePress(InputEvent.BUTTON1_MASK);
-            pause(1000);
+            pause(retryInterval);
             robot.mouseRelease(InputEvent.BUTTON1_MASK);
             reportresult(true, "MOUSE MOVE AND CLICK : ", "PASSED",
-                    "MOUSE MOVE AND CLICK command: Resolution : " + resolution);
+                    "MOUSE MOVE AND CLICK command: Resolution : " + res);
 
-        }
-        // Double Click
-        else if ("dclick".equals(command.toLowerCase(Locale.getDefault()))) {
+        } else if ("dclick".equals(command.toLowerCase(Locale.getDefault()))) {
 
             robot.mousePress(InputEvent.BUTTON1_MASK);
             robot.mouseRelease(InputEvent.BUTTON1_MASK);
-            robot.delay(500);
+            final int optimumPauseBetweenDclick = 500;
+            robot.delay(optimumPauseBetweenDclick);
             robot.mousePress(InputEvent.BUTTON1_MASK);
             robot.mouseRelease(InputEvent.BUTTON1_MASK);
 
             reportresult(true, "MOUSE MOVE AND DOUBLE CLICK : ", "PASSED",
                     "MOUSE MOVE AND DOUBLE CLICK command: Resolution: "
-                            + resolution);
+                            + res);
             checkTrue(false, true, "MOUSE MOVE AND CLICK command: Resolution: "
-                    + resolution);
+                    + res);
 
         }
 
-        robot.keyPress(KeyEvent.VK_F11);
-        robot.delay(10);
-        robot.keyRelease(KeyEvent.VK_F11);
+        robot.keyPress(f11KeyCode);
+        robot.delay(optimumPauseBetweenkeyCombs);
+        robot.keyRelease(f11KeyCode);
     }
 
     /**
      * Support method for mouseMoveAndClick Calculate the width of the test
      * runner PC.
-     * */
+     *
+     * @param oldSystemWidth the old system width
+     * @param oldSystemX the old system x
+     * @return the double
+     */
 
     public static double calWidth(final double oldSystemWidth,
             final double oldSystemX) {
         double newSystemWidth = resizeScreen().width;
         return (oldSystemX / oldSystemWidth) * newSystemWidth;
-        
+
     }
 
     /**
      * Support method for mouseMoveAndClick <br>
      * Calculate the height of the test runner PC.
-     * */
+     *
+     * @param oldSystemHigh the old system high
+     * @param oldSystemY the old system y
+     * @return the double
+     */
     // High of the test runner PC
     public static double calHight(final double oldSystemHigh,
             final double oldSystemY) {
@@ -6188,7 +6084,9 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     /**
      * Support method for mouseMoveAndClick <br>
      * Resize the screen.
-     * */
+     *
+     * @return the dimension
+     */
     private static Dimension resizeScreen() {
         Toolkit toolkit = Toolkit.getDefaultToolkit();
         return toolkit.getScreenSize();
@@ -6210,7 +6108,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * @param waittime
      *            : Wait time before the events.
      * */
-    public void fireEvent(final String event, final String waittime) {
+    public final void fireEvent(final String event, final String waittime) {
 
         super.pause(Integer.parseInt(waittime));
         /*
@@ -6266,9 +6164,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     /**
      * Get the selected text in webpage to the clipboard and compare the value
-     * with the given input
-     * 
-     * */
+     * with the given input.
+     *
+     * @param value the value
+     * @throws Exception the exception
+     */
 
     private void fireEventVerifyValue(final String value) throws Exception {
 
@@ -6280,7 +6180,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         robot.keyRelease(KeyEvent.VK_C);
         robot.keyRelease(KeyEvent.VK_CONTROL);
 
-        pause(500);
+        pause(retryInterval);
         Transferable trans =
                 Toolkit.getDefaultToolkit().getSystemClipboard()
                         .getContents(null);
@@ -6311,16 +6211,18 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Fires a set of java robot key events into the webpage
-     * 
-     * */
+     * Fires a set of java robot key events into the webpage.
+     *
+     * @param commands the commands
+     * @throws Exception the exception
+     */
 
     private void fireKeyEvent(final String commands) throws Exception {
 
-        String commandSet[] = commands.split("\\|");
+        String[] commandSet = commands.split("\\|");
         Robot robot = getRobot();
         for (String fullCommand : commandSet) {
-            pause(500);
+            pause(retryInterval / 2);
             int commandIndex = 0;
             int inputIndex = 1;
             String command = fullCommand.split("=")[commandIndex];
@@ -6348,16 +6250,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Fires a set of java robot mouse events into the webpage
-     * 
-     * */
+     * Fires a set of java robot mouse events into the webpage.
+     *
+     * @param commands the commands
+     * @throws Exception the exception
+     */
 
     private void fireMouseEvent(final String commands) throws Exception {
 
-        String commandSet[] = commands.split("\\|");
+        String[] commandSet = commands.split("\\|");
         Robot robot = getRobot();
+        final int optimumPauseBetweenKeyCombs = 10;
+        final int f11KeyCode = KeyEvent.VK_F11;
         for (String fullCommand : commandSet) {
-            pause(500);
+            pause(retryInterval);
             int commandIndex = 0;
             int inputIndex = 1;
             String command = fullCommand.split("=")[commandIndex];
@@ -6367,24 +6273,24 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
                 String[] coords = input.split(",");
                 int resolutionWidth = Integer.parseInt(coords[0]);
-                int resolutionHeight = Integer.parseInt(coords[1]);
-                int X = Integer.parseInt(coords[2]);
-                int Y = Integer.parseInt(coords[3]);
+                int resolutionHeight = Integer.parseInt(coords[inputIndex]);
+                int x = Integer.parseInt(coords[inputIndex + 1]);
+                int y = Integer.parseInt(coords[inputIndex + 2]);
 
-                int xCordinateAutual = (int) calWidth(resolutionWidth, X);
-                int yCordinateAutual = (int) calHight(resolutionHeight, Y);
+                int xCordinateAutual = (int) calWidth(resolutionWidth, x);
+                int yCordinateAutual = (int) calHight(resolutionHeight, y);
 
-                robot.keyPress(KeyEvent.VK_F11);
-                robot.delay(10);
-                robot.keyRelease(KeyEvent.VK_F11);
-                pause(2000);
+                robot.keyPress(f11KeyCode);
+                robot.delay(optimumPauseBetweenKeyCombs);
+                robot.keyRelease(f11KeyCode);
+                pause(retryInterval);
 
                 // Mouse Move
                 robot.mouseMove(xCordinateAutual, yCordinateAutual);
 
-                robot.keyPress(KeyEvent.VK_F11);
-                robot.delay(10);
-                robot.keyRelease(KeyEvent.VK_F11);
+                robot.keyPress(f11KeyCode);
+                pause(optimumPauseBetweenKeyCombs);
+                robot.keyRelease(f11KeyCode);
 
             } else if ("SCROLL".equalsIgnoreCase(command)) {
 
@@ -6400,10 +6306,11 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
     }
 
     /**
-     * Switch between diffent users by user name
-     * 
-     * */
-    public void switchUser(final String instanceName) {
+     * Switch between diffent users by user name.
+     *
+     * @param instanceName the instance name
+     */
+    public final void switchUser(final String instanceName) {
 
         boolean isNewInstance;
         if (getSeleniumInstances().containsKey(instanceName)) {
@@ -6428,11 +6335,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     /**
      * Creates a new user profile and launches a seperate browser session for
-     * the user
-     * 
-     * */
+     * the user.
+     *
+     * @param instanceName the instance name
+     * @param browser the browser
+     * @param serverConfig the server config
+     */
 
-    public void createUser(final String instanceName, final String browser,
+    public final void createUser(final String instanceName, final String browser,
             final String serverConfig) {
 
         boolean isNewInstance;
@@ -6483,25 +6393,22 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * 
      * Property name : WINDOWPRESENT <br>
      * Check if the window is present
-     * 
-     * @param windowName
-     *            : object name alias given by the user.
-     * @param propertyname
-     *            : Name of the object property
-     * @param objExpectedvale
-     *            : value expected for the given property
-     * @param stopOnFailure
-     *            :if <I> true </I> : stop the execution after the failure <br>
+     *
+     * @param windowName            : object name alias given by the user.
+     * @param identifier the identifier
+     * @param propertyname            : Name of the object property
+     * @param objExpectedvale            : value expected for the given property
+     * @param stopOnFailure            :if <I> true </I> : stop the execution after the failure <br>
      *            if <I> false </I>: Continue the execution after the failure
-     * */
-    public void checkWindowProperty(final String windowName,
+     */
+    public final void checkWindowProperty(final String windowName,
             final String identifier, final String propertyname,
             final Object objExpectedvale, final boolean stopOnFailure) {
 
-        this.identifire = identifier;
+        this.locatorIdentifire = identifier;
         checkWindowProperty(windowName, propertyname, objExpectedvale,
                 stopOnFailure);
-        this.identifire = "";
+        this.locatorIdentifire = "";
     }
 
     /**
@@ -6509,7 +6416,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      * is exists if the property does not exists, further continuation of the
      * script execution will be decided <br>
      * besed on value of the <b> continueExecution </b> parameter provided by
-     * the user <br>
+     * the user <br/>
      * <br>
      * in the web page.
      * 
@@ -6527,19 +6434,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
      *            if <I> false </I>: Continue the execution after the failure
      * */
 
-    public void checkWindowProperty(final String windowName,
+    public final void checkWindowProperty(final String windowName,
             final String propertyname, final Object objExpectedvale,
             final boolean stopOnFailure) {
 
         if (propertyname.equals(WindowValidationType.WINDOWPRESENT.toString())) {
-            
-            String expectedvale = checkNullObject(objExpectedvale, "CHECK OBJECT PROPERTY");
+
+            String expectedvale =
+                    checkNullObject(objExpectedvale, "CHECK OBJECT PROPERTY");
             checkWindowPresent(windowName, propertyname, expectedvale,
                     stopOnFailure);
-        } else if (propertyname.equals(WindowValidationType.CHECKTITLE
-                .toString())) {
-
-            throw new NotImplementedException();
         }
 
     }
@@ -6568,10 +6472,10 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         // String windowiden = "";
 
         // Getting the actual object identification from the object map
-        String window = ObjectMap.getObjectSearchPath(windowName, identifire);
+        String window = ObjectMap.getObjectSearchPath(windowName, locatorIdentifire);
         try {
             checkForNewWindowPopups();
-            
+
             /*
              * START DESCRIPTION following for loop was added to make the
              * command more consistent try the command for give amount of time
@@ -6586,11 +6490,13 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 try {
                     counter--;
                     String currentWinHandle = driver.getWindowHandle();
-                    String targetWindow = getMatchingWindowFromCurrentWindowHandles(driver, window);
+                    String targetWindow =
+                            getMatchingWindowFromCurrentWindowHandles(driver,
+                                    window);
                     driver.switchTo().window(currentWinHandle);
                     if (expectedvale.equalsIgnoreCase(String
-                            .valueOf(targetWindow!=null))) {
-                        
+                            .valueOf(targetWindow != null))) {
+
                         reportresult(true, "CHECK WINDOW PROPERTY:"
                                 + propertyname + "", "PASSED", "");
                     } else {
@@ -6610,7 +6516,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     }
                     break;
                 } catch (WebDriverException ex) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                     if (!(counter > 0)) {
                         reportresult(true, "CHECK WINDOW PROPERTY:"
                                 + propertyname + "", "FAILED",
@@ -6638,10 +6544,18 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     }
 
-     private ArrayList<Object> getDBTable(final String instanceName,
+    /**
+     * Gets the db table.
+     *
+     * @param instanceName the instance name
+     * @param query the query
+     * @return the DB table
+     * @throws Exception the exception
+     */
+    private ArrayList<Object> getDBTable(final String instanceName,
             final String query) throws Exception { // private
 
-        ArrayList<Object> arrList = new ArrayList<>();
+        ArrayList<Object> arrList = new ArrayList<Object>();
         ResultSet result = null;
         Connection con = null;
         PreparedStatement preparedStmt = null;
@@ -6655,7 +6569,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             preparedStmt = con.prepareStatement("?");
             preparedStmt.setString(1, query);
             result = preparedStmt.executeQuery();
-            ResultSetMetaData md = (ResultSetMetaData) result.getMetaData();
+            ResultSetMetaData md = result.getMetaData();
             int count = md.getColumnCount();
 
             while (result.next()) {
@@ -6669,18 +6583,28 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         "Empty Result set for the query :- " + query);
             }
         } finally {
-            preparedStmt.close();
+            if (preparedStmt != null) {
+                preparedStmt.close();
+            }            
         }
         return arrList;
 
     }
 
-    public void checkDBResults(final String instanceName, final String query,
+    /**
+     * Check db results.
+     *
+     * @param instanceName the instance name
+     * @param query the query
+     * @param expectedValue the expected value
+     * @param stopOnFaliure the stop on faliure
+     */
+    public final void checkDBResults(final String instanceName, final String query,
             final String expectedValue, final boolean stopOnFaliure) {
 
         ArrayList<Object> objArrList;
         ArrayList<String> inputTable;
-        ArrayList<String> strArrList = new ArrayList<>();
+        ArrayList<String> strArrList = new ArrayList<String>();
         try {
             objArrList = getDBTable(instanceName, query);
 
@@ -6748,14 +6672,21 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     }
 
-    public String getStringDBResult(final String instanceName,
+    /**
+     * Gets the string db result.
+     *
+     * @param instanceName the instance name
+     * @param query the query
+     * @return the string db result
+     */
+    public final String getStringDBResult(final String instanceName,
             final String query) {
 
         ArrayList<Object> arrList;
-        String Value = null;
+        String value = null;
         try {
             arrList = getDBTable(instanceName, query);
-            Value = arrList.get(0).toString();
+            value = arrList.get(0).toString();
             if (arrList.size() >= 2) {
                 reportresult(
                         true,
@@ -6764,7 +6695,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         "For Query = "
                                 + query
                                 + " Actual result contains more than one value. Actual Values :- "
-                                + arrList + " Return Value :- " + Value);
+                                + arrList + " Return Value :- " + value);
             }
             reportresult(true, "SET DB RESULTS : ", "PASSED", "For Query = "
                     + query);
@@ -6790,13 +6721,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 checkTrue(false, false, errorString);
             }
         }
-        return Value;
+        return value;
     }
 
-    public int getIntDBResult(final String instanceName, final String query) {
+    /**
+     * Gets the int db result.
+     *
+     * @param instanceName the instance name
+     * @param query the query
+     * @return the int db result
+     */
+    public final Integer getIntDBResult(final String instanceName, final String query) {
 
         ArrayList<Object> arrList;
-        Integer Value = null;
+        Integer value = null;
         try {
             arrList = getDBTable(instanceName, query);
             if (!(arrList.get(0) instanceof Integer)) {
@@ -6804,7 +6742,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                         + arrList.get(0).toString()
                         + ") is not stored as an interger in the database.");
             }
-            Value = (Integer) arrList.get(0);
+            value = (Integer) arrList.get(0);
             reportresult(true, "SET DB RESULTS : ", "PASSED", "For Query = "
                     + query);
         } catch (SQLException e) {
@@ -6829,10 +6767,17 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                 checkTrue(false, false, errorString);
             }
         }
-        return Value.intValue();
+        return value;
     }
 
-    public Boolean getBooleanDBResult(final String instanceName,
+    /**
+     * Gets the boolean db result.
+     *
+     * @param instanceName the instance name
+     * @param query the query
+     * @return the boolean db result
+     */
+    public final Boolean getBooleanDBResult(final String instanceName,
             final String query) {
 
         ArrayList<Object> arrList;
@@ -6873,7 +6818,16 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         return value;
     }
 
-    public void createDBConnection(final String databaseType,
+    /**
+     * Creates the db connection.
+     *
+     * @param databaseType the database type
+     * @param instanceName the instance name
+     * @param url the url
+     * @param username the username
+     * @param password the password
+     */
+    public final void createDBConnection(final String databaseType,
             final String instanceName, final String url, final String username,
             final String password) {
         Connection con = null;
@@ -6932,8 +6886,23 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     }
 
+    /**
+     * Checks if is image present.
+     *
+     * @param path the path
+     * @param isRotatable the is rotatable
+     * @return the screen region
+     */
     private ScreenRegion isImagePresent(final String path,
             final boolean isRotatable) {
+
+        PropertyHandler propHandler = new PropertyHandler("runtime.properties");
+        double maxRecQuality =
+                Double.parseDouble(propHandler
+                        .getRuntimeProperty("MAX_REG_QUALITY"));
+
+        int rotationDegree = Integer.parseInt(propHandler
+                .getRuntimeProperty("ROTATION_DEGREE"));
 
         int retry = getRetryCount();
         double regQuality = maxRecQuality;
@@ -6948,24 +6917,28 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             target.setMinScore(regQuality);
             targetRegion = s.find(target);
             if (targetRegion == null) {
-                pause(RETRY_INTERVAL);
-                if(isRotatable){
+                pause(retryInterval);
+                if (isRotatable) {
                     img.rotate(rotationDegree);
                 }
             } else {
                 break;
             }
         }
-            
+
         if (targetRegion == null) {
+            double minRecQuality =
+                    Double.parseDouble(propHandler
+                            .getRuntimeProperty("MAX_REG_QUALITY"));
+            final double reduceRegQualityPotion = 0.1;
             while (targetRegion == null && regQuality >= minRecQuality) {
                 ScreenRegion s = new DesktopScreenRegion();
                 target = new ImageTarget(img.getBufferedImage());
                 target.setMinScore(regQuality);
                 targetRegion = s.find(target);
-                regQuality = regQuality - 0.1;
+                regQuality = regQuality - reduceRegQualityPotion;
                 if (targetRegion == null) {
-                    pause(RETRY_INTERVAL);
+                    pause(retryInterval);
                 }
 
             }
@@ -6974,7 +6947,15 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         return targetRegion;
     }
 
-    public void handleImagePopup(final String imagePath,
+    /**
+     * Handle image popup.
+     *
+     * @param imagePath the image path
+     * @param actionFlow the action flow
+     * @param waitTime the wait time
+     * @throws Exception the exception
+     */
+    public final void handleImagePopup(final String imagePath,
             final String actionFlow, final String waitTime) throws Exception {
         initRobot();
         clipboard = Toolkit.getDefaultToolkit().getSystemClipboard();
@@ -6986,10 +6967,9 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             @Override
             public void run() {
 
-                
                 try {
                     pause(Integer.parseInt(waitTimep));
-                    
+
                 } catch (Exception e1) {
                     e1.printStackTrace();
                 }
@@ -7019,7 +6999,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     }
 
-    public boolean checkImagePresent(final String path,
+    /**
+     * Check image present.
+     *
+     * @param path the path
+     * @param isRotatable the is rotatable
+     * @return true, if check image present
+     */
+    public final boolean checkImagePresent(final String path,
             final boolean isRotatable) {
 
         boolean isElementPresent = false;
@@ -7045,7 +7032,14 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     }
 
-    public void checkImagePresent(final String path, final boolean isRotatable,
+    /**
+     * Check image present.
+     *
+     * @param path the path
+     * @param isRotatable the is rotatable
+     * @param stopOnFailure the stop on failure
+     */
+    public final void checkImagePresent(final String path, final boolean isRotatable,
             final boolean stopOnFailure) {
 
         boolean isElementPresent = false;
@@ -7076,16 +7070,20 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
 
     }
 
-    public void screenshot(final String imageName) {
+    /**
+     * Screenshot.
+     *
+     * @param imageName the image name
+     */
+    public final void screenshot(final String imageName) {
 
         File screenShotFolder = new File("Screenshots");
         WebDriver driver = getDriver();
         try {
-            if (!screenShotFolder.exists()) {
-                if (!screenShotFolder.mkdir()) {
-                    getLog().error("Cannot create a new file in the intended location. "
-                            + ""+screenShotFolder.getAbsolutePath());
-                }
+            if (!screenShotFolder.exists() && !screenShotFolder.mkdir()) {
+                    getLog().error(
+                            "Cannot create a new file in the intended location. "
+                                    + "" + screenShotFolder.getAbsolutePath());
             }
             File scrFile =
                     ((TakesScreenshot) driver).getScreenshotAs(OutputType.FILE);
@@ -7097,7 +7095,7 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
                     "Screenshot command: Screenshot saved at :" + filePath);
 
         } catch (Exception e) {
-            
+
             reportresult(
                     true,
                     "SCREENSHOT :",
@@ -7107,4 +7105,67 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
             e.printStackTrace();
         }
     }
+
+    /** The Constant CHAR_LIST. */
+    private static final String CHAR_LIST = "abcdefghijklmnopqrstuvwxyz";
+
+    /**
+     * This method generates random string.
+     * 
+     * @param length
+     *            set to length
+     * @return String
+     * 
+     */
+    private String generateRandomString(final int length) {
+
+        StringBuilder randStr = new StringBuilder();
+        for (int i = 0; i < length; i++) {
+            int number = getRandomNumber();
+            char ch = CHAR_LIST.charAt(number);
+            randStr.append(ch);
+        }
+        return randStr.toString();
+    }
+
+    /**
+     * This method generates random numbers.
+     * 
+     * @return int
+     */
+    private int getRandomNumber() {
+        int randomInt;
+        Random randomGenerator = new Random(System.nanoTime());
+        randomInt = randomGenerator.nextInt(CHAR_LIST.length());
+        if (randomInt - 1 == -1) {
+            return randomInt;
+        } else {
+            return randomInt - 1;
+        }
+    }
+
+    /**
+     * This method generates random string.
+     * 
+     * @param dataType
+     *            set to dataType
+     * @param length
+     *            set to length
+     * @return String
+     * 
+     */
+
+    public final String getRandom(final String dataType, final int length) {
+
+        String random = "";
+        if ("String".equalsIgnoreCase(dataType)) {
+            random = this.generateRandomString(length);
+        } else if ("int".equalsIgnoreCase(dataType)) {
+            random = String.valueOf(this.getRandomNumber());
+        } else if ("Alphanumeric".equalsIgnoreCase(dataType)) {
+            random = this.generateRandomString(length) + this.getRandomNumber();
+        }
+        return random;
+    }
+
 }

@@ -151,7 +151,11 @@ public class ScreenshotListenerVir implements IResultListener {
             props.load(fis);
         } finally {
             if (fis != null) {
-                fis.close();
+                try {
+                    fis.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                } 
             }
         }
         fileName = props.getProperty("currentScreenShot");

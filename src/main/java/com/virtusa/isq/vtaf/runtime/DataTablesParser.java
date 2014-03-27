@@ -112,6 +112,7 @@ public class DataTablesParser extends DefaultHandler {
             rowIndex = -1;
         } else if ("COLUMN".equalsIgnoreCase(qName)) {
             testDataTable.addColumn(attributes.getValue("name"));
+            testDataTable.addDataTypes(attributes.getValue("type"));
         } else if ("ROW".equalsIgnoreCase(qName)) {
             rowIndex++;
             columnIndex = -1;

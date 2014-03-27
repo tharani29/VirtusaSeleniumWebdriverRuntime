@@ -9,7 +9,7 @@
  * governing permissions and limitations under the License.
  */
 
-package com.virtusa.isq.vtaf.obectmap;
+package com.virtusa.isq.vtaf.objectmap;
 
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
@@ -133,13 +133,13 @@ public class ObjectMap {
             final String identifire) {
         String resolvedSearchPath = searchPath;
         List<String> parameterValues = getParameterValues(identifire);
-        for (int i = 0; i < parameterValues.size(); i++) {
-            if (!"".equals(parameterValues.get(i))) {
+        for (String param :  parameterValues) {
+            if (!"".equals(param)) {
                 resolvedSearchPath =
                         resolvedSearchPath.replace("<"
-                                + parameterValues.get(i).split("_PARAM:")[0]
+                                + param.split("_PARAM:")[0]
                                 + ">",
-                                parameterValues.get(i).split("_PARAM:")[1]);
+                                param.split("_PARAM:")[1]);
             }
         }
         return resolvedSearchPath;

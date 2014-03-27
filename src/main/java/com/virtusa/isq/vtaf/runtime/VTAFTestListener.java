@@ -9,7 +9,7 @@
  * governing permissions and limitations under the License.
  */
 
-package com.thoughtworks.selenium;
+package com.virtusa.isq.vtaf.runtime;
 
 import java.io.File;
 import java.lang.annotation.Annotation;
@@ -24,9 +24,6 @@ import org.testng.ITestResult;
 import org.testng.annotations.Test;
 
 import com.virtusa.VTAF.reporter.reader.ReportBase;
-import com.virtusa.isq.vtaf.runtime.DataTable;
-import com.virtusa.isq.vtaf.runtime.DataTablesParser;
-import com.virtusa.isq.vtaf.runtime.MetaDataTablesParser;
 
 /**
  * The listener interface for receiving VTAFTest events. The class that is
@@ -52,7 +49,7 @@ public class VTAFTestListener implements IInvokedMethodListener {
     private HashMap<String, DataTable> tables = null;
 
     /** The table headers. */
-    private List tableHeaders = new ArrayList();
+    private List<String> tableHeaders = new ArrayList<String>();
 
     /** The prev data provider. */
     private String prevDataProvider = "";
@@ -185,9 +182,8 @@ public class VTAFTestListener implements IInvokedMethodListener {
                     StringBuilder dataStringBuilder = new StringBuilder();
                     for (int columns = 0; columns < dataset[dataIteration].length; columns++) {
 
-                        dataStringBuilder.append(" |  "
-                                + tableHeaders.get(columns) + "="
-                                + dataset[dataIteration][columns] + "");
+                        dataStringBuilder.append(" |  ").append(tableHeaders.get(columns)).
+                            append('=').append(dataset[dataIteration][columns]);
                     }
                 }
             }
@@ -235,7 +231,8 @@ public class VTAFTestListener implements IInvokedMethodListener {
         if (tables == null) {
             File tempFile = new File("tempFile");
             if (tempFile.getAbsolutePath().contains("grid")) {
-                file = new File("data" + File.separator + "DataTables.xml");
+                file = new File("src" + File.separator + "main" + File.separator 
+                        + "resources" + File.separator + "data" + File.separator + "DataTables.xml");
             } else {
                 file =
                         new File("grid" + File.separator
@@ -266,7 +263,8 @@ public class VTAFTestListener implements IInvokedMethodListener {
                                 + "data" + File.separator + "DataTables.xml");
             } else {
 
-                file = new File("data" + File.separator + "DataTables.xml");
+                file = new File("src" + File.separator + "main" + File.separator 
+                       + "resources" + File.separator + "data" + File.separator + "DataTables.xml");
             }
             tables = MetaDataTablesParser.parseTables(file);
         }
@@ -282,11 +280,10 @@ public class VTAFTestListener implements IInvokedMethodListener {
      */
     public final Object[][] getTableArray(final DataTable table) {
 
-        Object[][] tabArray = null;
         Integer rowcount = table.getRowCount();
         Integer colcount = table.getcolCount();
 
-        tabArray = new Object[rowcount][colcount];
+        Object[][] tabArray = new Object[rowcount][colcount];
 
         for (int row = 0; row < rowcount; row++) {
             for (int col = 0; col < colcount; col++) {
@@ -361,7 +358,7 @@ public class VTAFTestListener implements IInvokedMethodListener {
     /**
      * @return the tableHeaders
      */
-    public final List getTableHeaders() {
+    public final List<String> getTableHeaders() {
         return tableHeaders;
     }
 
@@ -369,7 +366,7 @@ public class VTAFTestListener implements IInvokedMethodListener {
      * @param tableHeadersList
      *            the tableHeaders to set
      */
-    public final void setTableHeaders(final List tableHeadersList) {
+    public final void setTableHeaders(final List<String> tableHeadersList) {
         this.tableHeaders = tableHeadersList;
     }
 
