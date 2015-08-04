@@ -11,11 +11,9 @@
 
 package com.thoughtworks.selenium;
 
-
 import java.awt.AWTException;
 import java.awt.Robot;
 import java.io.File;
-import java.io.FileWriter;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.sql.Connection;
@@ -24,6 +22,7 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.TimeUnit;
@@ -46,10 +45,13 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 
-import com.opera.core.systems.OperaDriver;
+import org.openqa.selenium.opera.OperaDriver;
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 import com.virtusa.VTAF.reporter.reader.ReportBase;
 import com.virtusa.isq.vtaf.report.reporter.Reporter;
 import com.virtusa.isq.vtaf.utils.PropertyHandler;
+
+// import com.virtusa.kbb.excel.reader.Main;
 
 /**
  * The Class SeleneseTestNgHelperVir.
@@ -106,9 +108,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
     /** The total execution time taken. */
     private long totalExecutionTimeTaken;
-    
-    /** Stores the time taken to each command. */
-    private static String logTimeCSVFileBuilder = "";
 
     /**
      * Sets the before test configuration for the test.
@@ -123,7 +122,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      *             the exception
      */
     @BeforeTest
-    @Parameters({ "selenium.url", "selenium.browser" })
+    @Parameters({"selenium.url", "selenium.browser" })
     public final void setUp(
             @Optional("http://www.google.com") final String url,
             @Optional final String browserString, final ITestContext context)
@@ -133,9 +132,12 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
             String browserStr = super.getBrowserString();
             if (browserStr == null || browserStr.isEmpty()) {
                 super.setBrowserString(runtimeBrowserString());
+                super.setUp(url, getBrowserString());
+            } else {
+                super.setUp(url, getBrowserString());
             }
             log.info("Execution Browser : " + browserStr);
-            super.setUp(url, browserStr);
+
         } catch (Exception e) {
             log.error("Exception occured while setting up the test ", e);
         }
@@ -157,7 +159,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         initReporter();
         resultReporter.addNewTestExecution();
         getLogger(SeleneseTestNgHelperVir.class);
-        
+
         setRobot(new Robot());
 
         setProp(new Properties());
@@ -172,7 +174,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         } else {
             file = rootFile + File.separator + "project.properties";
         }
-        setPropertiesLocation(file);        
+        setPropertiesLocation(file);
         getLog().info("Propery file location : " + rootFile);
         this.readUserProp();
     }
@@ -194,7 +196,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         String retry = propHandler.getRuntimeProperty("RETRY");
         String browser = propHandler.getRuntimeProperty("BROWSER");
         setExecProps(propHandler.getPropertyObject());
-        
+
         if (!browser.isEmpty()) {
             super.setBrowserString(browser);
             System.setProperty("selenium.defaultBrowser", getBrowserString());
@@ -218,6 +220,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     /**
      * Gets the selenium.
      * 
+     * 
      */
     @BeforeClass
     public final void getSelenium() {
@@ -234,10 +237,10 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      */
     @BeforeMethod
     public final void setTestContext(final Method method) {
-
+        setTestCaseFailedStatus(false);
         PropertyHandler propHandler = new PropertyHandler(propertiesLocation);
         propHandler.setRuntimeProperty("tcComment", "");
-        
+
         totalExecutionTimeTaken = 0;
         testcaseStartTime = getCurrentTime();
         errorMessages = "Verification failures : \n";
@@ -245,7 +248,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         setBrowserString(System.getProperty("selenium.defaultBrowser"));
         this.cleanBrowserSessions();
         getLog().info("Starting a new selenium webdriver session.");
-        
+
         this.startBrowserSession(getBrowserString());
         Logger log = getLog();
         log.info("Started the selenium webdriver session.");
@@ -262,9 +265,9 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
                 this.getClass().getPackage().toString().split("package ")[1];
         String testCaseName = method.getName();
         resultReporter.addNewTestCase(testCaseName);
-        
+
         appendToCSVFileBuilder("\n", testCaseName, "\n");
-        //logTimeCSVFileBuilder.append("\n").append(testCaseName).append("\n");
+        // logTimeCSVFileBuilder.append("\n").append(testCaseName).append("\n");
         startOfTestCase();
 
         log.info("Starting the test case..");
@@ -304,10 +307,11 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
             DesiredCapabilities.opera();
             driver = new OperaDriver(capabilities);
+
         } else {
             getLog().info("Unsupported browser type passed " + browserString);
             throw new AssertionError("Unsupported Browser");
-        } 
+        }
 
         setDriver(driver);
         if (getSeleniumInstances().isEmpty()) {
@@ -321,12 +325,26 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      * Clean driver server sessions.
      */
     private void cleanDriverServerSessions() {
-        this.killBrowserProcess("chromedriver");
-        if (isx64bit()) {
-            this.killBrowserProcess("IEDriverServer(x64)");
-        } else {
-            this.killBrowserProcess("IEDriverServer(x86)");
+        String os = getOperatingSystem();
+        if (os.contains("win")) {
+
+            this.killBrowserProcess("chromedriver_win");
+            if (isx64bit()) {
+                this.killBrowserProcess("IEDriverServer(x64)");
+            } else {
+                this.killBrowserProcess("IEDriverServer(x86)");
+            }
+        } else if (os.contains("mac")) {
+
+            this.killBrowserProcess("chromedriver_mac");
+        } else if (os.contains("nux")) {
+            if (isx64bit()) {
+                this.killBrowserProcess("chromedriver_linux(x64)");
+            } else {
+                this.killBrowserProcess("chromedriver_linux(x86)");
+            }
         }
+
     }
 
     /**
@@ -370,6 +388,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
         Logger log = getLog();
         getLogger(SeleneseTestNgHelperVir.class);
+        getTestCaseFailedStatus();
         log.info("End of the test case.");
 
         log.info("Total Time taken to execute the commands : "
@@ -389,6 +408,16 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
         Map<String, Connection> databaseInstances = getDatabaseInstances();
         for (Map.Entry<String, Connection> entry : databaseInstances.entrySet()) {
+            try {
+                entry.getValue().close();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+        Map<String, ODatabaseDocumentTx> orientDatabaseInstances =
+                getOrientDatabaseInstances();
+        for (Map.Entry<String, ODatabaseDocumentTx> entry : orientDatabaseInstances
+                .entrySet()) {
             try {
                 entry.getValue().close();
             } catch (Exception e) {
@@ -425,36 +454,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         cleanDriverServerSessions();
         generateTimeLogCSV();
     }
-    
-    
-    /**
-     * Generates the log time CSV file in the target/logs folder. 
-     * 
-     */
-    private void generateTimeLogCSV() {
-        FileWriter writer = null;
-        Logger log = getLog();
-        try {
-            writer = new FileWriter("target" + File.separator + "logs" 
-                    + File.separator + "ExecutionTime.csv");
-            writer.append(logTimeCSVFileBuilder);
-            writer.flush();
-        } catch (IOException e) {
-            log.error(e);
-            e.printStackTrace();
-        } catch (Exception e) {
-            log.error(e);
-            e.printStackTrace();
-        } finally {
-            if (writer != null) {
-                try {
-                    writer.close();
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
-        }
-    }
 
     /**
      * Kill the browser process.<br>
@@ -467,23 +466,33 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      *                 If the process is firefox.exe parameter should be firefox
      */
     public final void killBrowserProcess(final String process) {
-        String processName = process.concat(".exe");
-        Logger log = null;
+        String os = getOperatingSystem().toLowerCase(Locale.getDefault());
+
         final int pauseTimeAfterBrowserKill = 3000;
+        Logger log = getLog();
         try {
-            log = getLog();
-            if (isProcessRunning(processName)) {
-                this.killProcess(processName);
-                
-                log.info(process.concat(" browser session cleaned successfully"));
-                pause(pauseTimeAfterBrowserKill);
+
+            if (os.contains("win")) {
+
+                String processName = process.concat(".exe");
+                if (isProcessRunning(processName)) {
+                    this.killProcess(processName);
+
+                    sleep(pauseTimeAfterBrowserKill);
+                }
+            } else if (os.contains("mac") || os.contains("nux")) {
+
+                this.killProcess(process);
+
+                sleep(pauseTimeAfterBrowserKill);
             }
-        } catch (Exception ex) {
-            log.error(process.concat(" browser session clean failed"), ex);
+
+            log.info(process.concat(" browser session cleaned successfully"));
+
+        } catch (Exception e) {
+            log.error(e);
         }
     }
-
-    
 
     /**
      * Inits the reporter.
@@ -541,6 +550,60 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
             final String result, final String messageString) {
         String message = messageString;
 
+        Logger log = getStackTrace(step, result, message);
+
+        logTime(step, getCommandStartTime(), getCurrentTime(), log);
+
+        reporter.reportResult(step, result, message);
+
+        // Adding data to the new reporter
+        try {
+            String testStep = step.substring(0, step.indexOf(':'));
+            // replace xml special characters in the message.
+            message = replaceXMLSpecialCharacters(message);
+            if ("PASSED".equals(result)) {
+                String testMessage = message;
+                if ("".equals(message) || message == null) {
+                    testMessage = "Passed";
+                }
+                if (callingClassName.contains("LIBRARY_RECOVERY")) {
+                    resultReporter.reportStepResults(true, "RECOVERY : "
+                            + testStep, testMessage, "Success", "");
+                } else {
+                    resultReporter.reportStepResults(true, testStep,
+                            testMessage, "Success", "");
+                }
+            } else {
+                if (callingClassName.contains("LIBRARY_RECOVERY")) {
+                    resultReporter.reportStepResults(false, "RECOVERY : "
+                            + testStep, message, "Error",
+                            getSourceLines(new Throwable(message)
+                                    .getStackTrace()));
+                } else {
+                    resultReporter.reportStepResults(false, testStep, message,
+                            "Error", getSourceLines(new Throwable(message)
+                                    .getStackTrace()));
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    /**
+     * Prints the stack trace.
+     * 
+     * @param step
+     *            the step
+     * @param result
+     *            the result
+     * @param message
+     *            the message
+     * @return the logger
+     */
+    private Logger getStackTrace(final String step, final String result,
+            final String message) {
         StackTraceElement[] stackTraceElements =
                 Thread.currentThread().getStackTrace();
         callingClassName = stackTraceElements[0].getClassName();
@@ -553,54 +616,28 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
                 break;
             }
         }
-        Class< ? > callingClass = null;
+        System.out.println(callingClassName);
+        // System.out.println("-----superman-----");
+        Class callingClass = null;
+        Logger log = getLog();
         try {
             callingClass = Class.forName(callingClassName);
         } catch (ClassNotFoundException e) {
             e.printStackTrace();
         }
         getLogger(callingClass);
-        Logger log = getLog();
         if (!currentMethod.equals(callingMethod)) {
             log.info("Executing : " + callingClass.getName() + " : "
                     + callingMethod);
             currentMethod = callingMethod;
-            
         }
 
         log.info("Step : " + step + "\t|\tResult : " + result
                 + "\t|\tMessage : " + message);
 
-        logTime(step, getCommandStartTime(), getCurrentTime(), log);
-
-        reporter.reportResult(step, result, message);
-
-        // Adding data to the new reporter
-        try {
-
-            String testStep = step.substring(0, step.indexOf(':'));
-            
-            // replace xml special characters in the message.
-            message = replaceXMLSpecialCharacters(message);
-            if ("PASSED".equals(result)) {
-                String testMessage = message;
-                String stepDesc = step.substring(step.indexOf(':') + 1, step.length());
-                if ("".equals(message) || message == null) {
-                    testMessage = stepDesc;
-                }
-                resultReporter.reportStepResults(true, testStep, testMessage,
-                        "Success", "");
-            } else {
-                resultReporter.reportStepResults(false, testStep, message,
-                        "Error",
-                        getSourceLines(new Throwable(message).getStackTrace()));
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-
+        return log;
     }
-   
+
     /**
      * End test reporting.
      * 
@@ -653,23 +690,26 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
      * @param log
      *            the log
      */
-    private void logTime(final String desc, final Date start, final Date end, final Logger log) {
-        try {                      
+    private void logTime(final String desc, final Date start, final Date end,
+            final Logger log) {
+        try {
             if (!desc.startsWith("PAUSE")) {
                 Long timeDiff = Math.abs(end.getTime() - start.getTime());
                 totalExecutionTimeTaken += timeDiff;
                 log.info("Time taken to execute " + desc + " " + timeDiff
                         + " ms");
                 appendToCSVFileBuilder(desc, ",", timeDiff, "\n");
-                //logTimeCSVFileBuilder.append(desc).append(',').append(timeDiff)
-                //        .append("\n");
+                // logTimeCSVFileBuilder.append(desc).append(',').append(timeDiff)
+                // .append("\n");
             }
         } catch (Exception e) {
-           log.info(e.getMessage());
+            log.info(e.getMessage());
         }
     }
 
     /**
+     * Gets the reporter.
+     * 
      * @return the reporter
      */
     public static final ReportBase getReporter() {
@@ -677,6 +717,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the reporter.
+     * 
      * @param reporterObj
      *            the reporter to set
      */
@@ -685,6 +727,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the robot.
+     * 
      * @return the robot
      */
     public static final Robot getRobot() {
@@ -692,6 +736,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the robot.
+     * 
      * @param robotObj
      *            the robot to set
      */
@@ -700,6 +746,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the prop.
+     * 
      * @return the prop
      */
     public static final Properties getProp() {
@@ -707,6 +755,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the prop.
+     * 
      * @param propObj
      *            the prop to set
      */
@@ -715,6 +765,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the properties location.
+     * 
      * @return the propertiesLocation
      */
     public static final String getPropertiesLocation() {
@@ -722,6 +774,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the properties location.
+     * 
      * @param propertiesLocationString
      *            the propertiesLocation to set
      */
@@ -731,6 +785,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the error messages.
+     * 
      * @return the errorMessages
      */
     public final String getErrorMessages() {
@@ -738,6 +794,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the error messages.
+     * 
      * @param errorMessagesString
      *            the errorMessages to set
      */
@@ -746,6 +804,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the test package name.
+     * 
      * @return the testPackageName
      */
     public final String getTestPackageName() {
@@ -753,6 +813,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the test package name.
+     * 
      * @param testPackageNameString
      *            the testPackageName to set
      */
@@ -761,6 +823,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the current method.
+     * 
      * @return the currentMethod
      */
     public final String getCurrentMethod() {
@@ -768,6 +832,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the current method.
+     * 
      * @param currentMethodString
      *            the currentMethod to set
      */
@@ -776,6 +842,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the calling class name.
+     * 
      * @return the callingClassName
      */
     public final String getCallingClassName() {
@@ -783,6 +851,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the calling class name.
+     * 
      * @param callingClassNameString
      *            the callingClassName to set
      */
@@ -791,6 +861,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the line number.
+     * 
      * @return the lineNumber
      */
     public final int getLineNumber() {
@@ -798,6 +870,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the line number.
+     * 
      * @param lineNumberInt
      *            the lineNumber to set
      */
@@ -806,6 +880,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the exec props.
+     * 
      * @return the execProps
      */
     public static final Properties getExecProps() {
@@ -813,6 +889,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the exec props.
+     * 
      * @param execPropsObj
      *            the execProps to set
      */
@@ -821,6 +899,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the open window handle index.
+     * 
      * @return the openWindowHandleIndex
      */
     public final List<String> getOpenWindowHandleIndex() {
@@ -828,6 +908,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the open window handle index.
+     * 
      * @param openWindowHandleIndexList
      *            the openWindowHandleIndex to set
      */
@@ -837,6 +919,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the result reporter.
+     * 
      * @return the resultReporter
      */
     public static final Reporter getResultReporter() {
@@ -844,6 +928,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the result reporter.
+     * 
      * @param resultReporterObj
      *            the resultReporter to set
      */
@@ -852,6 +938,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the total execution time taken.
+     * 
      * @return the totalExecutionTimeTaken
      */
     public final long getTotalExecutionTimeTaken() {
@@ -859,6 +947,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the total execution time taken.
+     * 
      * @param totalTimeTaken
      *            the totalExecutionTimeTaken to set
      */
@@ -867,6 +957,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the retry count.
+     * 
      * @return the retryCount
      */
     public static final int getRetryCount() {
@@ -874,6 +966,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the retry count.
+     * 
      * @param retryCountInt
      *            the retryCount to set
      */
@@ -881,7 +975,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         SeleneseTestNgHelperVir.retryCount = retryCountInt;
     }
 
-    
     /**
      * Append to the csv log.
      * 
@@ -892,8 +985,9 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         StringBuilder builder = new StringBuilder();
         for (Object currentAppendValue : appendValues) {
             builder.append(currentAppendValue);
-            
+
         }
-        logTimeCSVFileBuilder += builder.toString();
+
+        setLogTimeCSVFileBuilder(builder.toString());
     }
 }

@@ -11,7 +11,6 @@
 
 package com.thoughtworks.selenium;
 
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
@@ -155,7 +154,7 @@ public class ScreenshotListenerVir implements IResultListener {
                     fis.close();
                 } catch (IOException e) {
                     e.printStackTrace();
-                } 
+                }
             }
         }
         fileName = props.getProperty("currentScreenShot");

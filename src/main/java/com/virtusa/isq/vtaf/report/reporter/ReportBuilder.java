@@ -9,7 +9,6 @@
  * governing permissions and limitations under the License.
  */
 
-
 package com.virtusa.isq.vtaf.report.reporter;
 
 import java.awt.Dimension;
@@ -32,13 +31,13 @@ public class ReportBuilder {
 
     /** The test case. */
     private TestCase testCase = null;
-    
+
     /** The test suite. */
     private TestSuite testSuite = null;
-    
+
     /** The test execution. */
     private TestExecution testExecution = null;
-    
+
     /** The report folder location. */
     private String reportFolderLocation;
 
@@ -50,15 +49,15 @@ public class ReportBuilder {
 
     /** The reported test cases. */
     private Set<Integer> reportedTestCases;
-    
-       
+
     /**
      * Instantiates a new report builder.
-     *
-     * @param reportFolderLoc the report folder loc
+     * 
+     * @param reportFolderLoc
+     *            the report folder loc
      */
     public ReportBuilder(final String reportFolderLoc) {
-        
+
         this.reportFolderLocation = reportFolderLoc;
         rid = 0;
         uniqueTestCaseId = 0;
@@ -67,7 +66,7 @@ public class ReportBuilder {
 
     /**
      * Gets the report folder location.
-     *
+     * 
      * @return the report folder location
      */
     public final String getReportFolderLocation() {
@@ -76,23 +75,29 @@ public class ReportBuilder {
 
     /**
      * Adds the new test case.
-     *
-     * @param modulename the modulename
-     * @param execDuration the exec duration
+     * 
+     * @param modulename
+     *            the modulename
+     * @param execDuration
+     *            the exec duration
      */
-    public final void addNewTestCase(final String modulename, final String execDuration) {
+    public final void addNewTestCase(final String modulename,
+            final String execDuration) {
 
         String rId = getRid();
         testCase =
-                new TestCase(modulename, execDuration, rId, getUniqueTestCaseId());
+                new TestCase(modulename, execDuration, rId,
+                        getUniqueTestCaseId());
         testSuite.getTestCases().add(testCase);
     }
 
     /**
      * Adds the new test suite.
-     *
-     * @param testSuiteName the test suite name
-     * @param duration the duration
+     * 
+     * @param testSuiteName
+     *            the test suite name
+     * @param duration
+     *            the duration
      */
     public final void addNewTestSuite(final String testSuiteName,
             final String duration) {
@@ -121,7 +126,7 @@ public class ReportBuilder {
         String screenresolution = "UNKNOWN";
         String timestamp = "UNKNOWN";
         String duration = "UNKNOWN";
-        
+
         try {
             user = System.getProperty("user.name");
             host = InetAddress.getLoopbackAddress().getHostName();
@@ -147,20 +152,23 @@ public class ReportBuilder {
 
     /**
      * Adds the new test step.
-     *
-     * @param isPassed the is passed
-     * @param category the category
-     * @param message the message
-     * @param loglvl the loglvl
+     * 
+     * @param isPassed
+     *            the is passed
+     * @param category
+     *            the category
+     * @param message
+     *            the message
+     * @param loglvl
+     *            the loglvl
      */
-    public final void addNewTestStep(final boolean isPassed, final String category,
-            final String message, final String loglvl) {
+    public final void addNewTestStep(final boolean isPassed,
+            final String category, final String message, final String loglvl) {
 
         Date date = new Date();
         SimpleDateFormat sdf = new SimpleDateFormat("h:mm:ss");
         String time = sdf.format(date);
 
-        
         TestStep testStep =
                 new TestStep(isPassed, time, category, message, loglvl);
 
@@ -170,22 +178,29 @@ public class ReportBuilder {
 
     /**
      * Adds the new test step.
-     *
-     * @param isPassed the is passed
-     * @param category the category
-     * @param errimg the errimg
-     * @param errthumb the errthumb
-     * @param message the message
-     * @param stacktrace the stacktrace
-     * @param loglvl the loglvl
+     * 
+     * @param isPassed
+     *            the is passed
+     * @param category
+     *            the category
+     * @param errimg
+     *            the errimg
+     * @param errthumb
+     *            the errthumb
+     * @param message
+     *            the message
+     * @param stacktrace
+     *            the stacktrace
+     * @param loglvl
+     *            the loglvl
      */
-    public final void addNewTestStep(final boolean isPassed, final String category,
-            final String errimg, final String errthumb, final String message,
-            final String stacktrace, final String loglvl) {
+    public final void addNewTestStep(final boolean isPassed,
+            final String category, final String errimg, final String errthumb,
+            final String message, final String stacktrace, final String loglvl) {
 
         TestStep testStep =
-                new TestStep(isPassed, category, errimg, errthumb,
-                        message, stacktrace, loglvl);
+                new TestStep(isPassed, category, errimg, errthumb, message,
+                        stacktrace, loglvl);
 
         testCase.getTestSteps().add(testStep);
 
@@ -221,7 +236,7 @@ public class ReportBuilder {
 
     /**
      * Gets the test execution.
-     *
+     * 
      * @return the test execution
      */
     public final TestExecution getTestExecution() {
@@ -230,7 +245,7 @@ public class ReportBuilder {
 
     /**
      * Gets the rid.
-     *
+     * 
      * @return the rid
      */
     public final String getRid() {
@@ -240,7 +255,7 @@ public class ReportBuilder {
 
     /**
      * Gets the unique test case id.
-     *
+     * 
      * @return the unique test case id
      */
     public final int getUniqueTestCaseId() {

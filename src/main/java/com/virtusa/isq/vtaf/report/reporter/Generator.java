@@ -9,10 +9,10 @@
  * governing permissions and limitations under the License.
  */
 
-
 package com.virtusa.isq.vtaf.report.reporter;
 
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStream;
@@ -23,16 +23,17 @@ import org.antlr.stringtemplate.StringTemplate;
 import org.antlr.stringtemplate.StringTemplateGroup;
 
 /**
- * Contains the generator routines that generates code based on the StringTemplate files.
+ * Contains the generator routines that generates code based on the
+ * StringTemplate files.
  * 
  */
 public class Generator {
 
-    
     /**
      * Generate report.
-     *
-     * @param reportBuilder the report builder
+     * 
+     * @param reportBuilder
+     *            the report builder
      */
     public final void generateReport(final ReportBuilder reportBuilder) {
         // String templateFolderRoot = "";
@@ -55,12 +56,17 @@ public class Generator {
      * Evaluates the Content() template function in the given template file and
      * saves to the file returned by the FileName() template function passing
      * the settings and the object passed.
-     *
-     * @param varName the var name
-     * @param objectToPass the object to pass
-     * @param reader the reader
-     * @param outputFileName the output file name
-     * @throws Exception the exception
+     * 
+     * @param varName
+     *            the var name
+     * @param objectToPass
+     *            the object to pass
+     * @param reader
+     *            the reader
+     * @param outputFileName
+     *            the output file name
+     * @throws Exception
+     *             the exception
      */
 
     private void createContent(final String varName, final Object objectToPass,
@@ -109,8 +115,9 @@ public class Generator {
 
         if (folderName != null) {
             File folder = new File(folderName);
-            if (!folder.exists() && !folder.mkdirs()) {           
-                throw new RuntimeException("Cannot create new folder in location " + folderName);
+            if (!folder.exists() && !folder.mkdirs()) {
+                throw new RuntimeException(
+                        "Cannot create new folder in location " + folderName);
             }
         }
 
@@ -118,7 +125,7 @@ public class Generator {
         try {
             out = new FileWriter(outputFileName);
             out.write(outputContent);
-            
+
         } catch (Exception e) {
             // if (e != null && e.getMessage() != null) {
             // //logger.error(e.getMessage(), e);
@@ -133,7 +140,9 @@ public class Generator {
                     e);
         } finally {
             try {
+                if (out != null) {
                 out.close();
+                }
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -145,8 +154,9 @@ public class Generator {
     // stream and then put it to sting reader
     /**
      * Gets the template string reader.
-     *
-     * @param filePath the file path
+     * 
+     * @param filePath
+     *            the file path
      * @return the template string reader
      */
     private StringReader getTemplateStringReader(final String filePath) {
@@ -156,7 +166,11 @@ public class Generator {
         final int byteSize = 4096;
         byte[] b = new byte[byteSize];
         try {
-            stream = Generator.class.getResourceAsStream(filePath);
+            File f =
+                    new File("src" + File.separator + "main" + File.separator
+                            + "resources" + File.separator + filePath);
+
+            stream = new FileInputStream(f.getAbsolutePath());
             int n = stream.read(b);
             while (n != -1) {
                 out.append(new String(b, 0, n));

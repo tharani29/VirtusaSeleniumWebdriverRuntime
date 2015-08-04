@@ -9,11 +9,11 @@
  * governing permissions and limitations under the License.
  */
 
-
 package com.virtusa.isq.vtaf.report.model;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+
 
 /**
  * The Class TestStep.
@@ -22,45 +22,54 @@ public class TestStep {
 
     /** The time. */
     private String time;
-    
+
     /** The category. */
     private String category;
-    
+
     /** The errimg. */
     private String errimg;
-    
+
     /** The errthumb. */
     private String errthumb;
-    
+
     /** The message. */
     private String message;
-    
+
     /** The stacktrace. */
     private String stacktrace;
-    
+
     /** The codefile. */
     private String codefile;
-    
+
     /** The codeline. */
     private String codeline;
-    
+
     /** The loglvl. */
     private String loglvl;
-    
+
     /** The is passed. */
     private boolean isPassed;
+    
+    /** The is screen shot. */
+    private boolean isScreenShot;
 
     /**
      * Success Test Step.
-     *
-     * @param ispassed the ispassed
-     * @param execTime the exec time
-     * @param stepCategory the step category
-     * @param stepMessage the step message
-     * @param loglevel the loglevel
+     * 
+     * @param ispassed
+     *            the ispassed
+     * @param execTime
+     *            the exec time
+     * @param stepCategory
+     *            the step category
+     * @param stepMessage
+     *            the step message
+     * @param loglevel
+     *            the loglevel
      */
     public TestStep(final boolean ispassed, final String execTime,
-            final String stepCategory, final String stepMessage, final String loglevel) {
+            final String stepCategory, final String stepMessage,
+            final String loglevel) {
         super();
         this.isPassed = ispassed;
         this.time = execTime;
@@ -73,20 +82,29 @@ public class TestStep {
 
     /**
      * Failed Test Step.
-     *
-     * @param ispassed the ispassed
-     * @param stepCategory the step category
-     * @param errImg the err img
-     * @param errThumb the err thumb
-     * @param stepMessage the step message
-     * @param stackTrace the stack trace
-     * @param loglevel the loglevel
+     * 
+     * @param ispassed
+     *            the ispassed
+     * @param stepCategory
+     *            the step category
+     * @param errImg
+     *            the err img
+     * @param errThumb
+     *            the err thumb
+     * @param stepMessage
+     *            the step message
+     * @param stackTrace
+     *            the stack trace
+     * @param loglevel
+     *            the loglevel
      */
-    public TestStep(final boolean ispassed, final String stepCategory, final String errImg, final String errThumb,
-            final String stepMessage, final String stackTrace, final String loglevel) {
+    public TestStep(final boolean ispassed, final String stepCategory,
+            final String errImg, final String errThumb,
+            final String stepMessage, final String stackTrace,
+            final String loglevel) {
         super();
         Date date = new Date();
-        SimpleDateFormat sdf = new SimpleDateFormat("h:mm:ss"); 
+        SimpleDateFormat sdf = new SimpleDateFormat("h:mm:ss");
         this.isPassed = ispassed;
         this.time = sdf.format(date);
         this.category = stepCategory;
@@ -101,16 +119,29 @@ public class TestStep {
 
     /**
      * Checks if is passed.
-     *
+     * 
      * @return true, if is passed
      */
     public final boolean isPassed() {
         return isPassed;
     }
+    
+    /**
+     * Checks if is screen shot.
+     *
+     * @return true, if is screen shot
+     */
+    public final boolean isScreenShot() {
+        if (!("SCREENSHOT ".equals(this.getCategory()))) {
+            return isScreenShot;
+        }
+        isScreenShot = true;
+        return isScreenShot;
+    }
 
     /**
      * Gets the time.
-     *
+     * 
      * @return the time
      */
     public final String getTime() {
@@ -119,7 +150,7 @@ public class TestStep {
 
     /**
      * Gets the category.
-     *
+     * 
      * @return the category
      */
     public final String getCategory() {
@@ -128,7 +159,7 @@ public class TestStep {
 
     /**
      * Gets the errimg.
-     *
+     * 
      * @return the errimg
      */
     public final String getErrimg() {
@@ -137,7 +168,7 @@ public class TestStep {
 
     /**
      * Gets the errthumb.
-     *
+     * 
      * @return the errthumb
      */
     public final String getErrthumb() {
@@ -146,7 +177,7 @@ public class TestStep {
 
     /**
      * Gets the message.
-     *
+     * 
      * @return the message
      */
     public final String getMessage() {
@@ -155,7 +186,7 @@ public class TestStep {
 
     /**
      * Gets the stacktrace.
-     *
+     * 
      * @return the stacktrace
      */
     public final String getStacktrace() {
@@ -164,7 +195,7 @@ public class TestStep {
 
     /**
      * Gets the codefile.
-     *
+     * 
      * @return the codefile
      */
     public final String getCodefile() {
@@ -173,7 +204,7 @@ public class TestStep {
 
     /**
      * Gets the codeline.
-     *
+     * 
      * @return the codeline
      */
     public final String getCodeline() {
@@ -182,7 +213,7 @@ public class TestStep {
 
     /**
      * Gets the loglvl.
-     *
+     * 
      * @return the loglvl
      */
     public final String getLoglvl() {

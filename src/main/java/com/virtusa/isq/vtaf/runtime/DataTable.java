@@ -1,14 +1,3 @@
-/*
- * Copyright 2004 ThoughtWorks, Inc. Licensed under the Apache License, Version
- * 2.0 (the "License"); you may not use this file except in compliance with the
- * License. You may obtain a copy of the License at
- * http://www.apache.org/licenses/LICENSE-2.0 Unless required by applicable law
- * or agreed to in writing, software distributed under the License is
- * distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
- * KIND, either express or implied. See the License for the specific language
- * governing permissions and limitations under the License.
- */
-
 package com.virtusa.isq.vtaf.runtime;
 
 import java.util.ArrayList;
@@ -30,7 +19,7 @@ public class DataTable {
 
     /** The columns. */
     private ArrayList<String> columns = new ArrayList<String>();
-    
+
     /** Data types of the columns. */
     private ArrayList<String> dataTypes = new ArrayList<String>();
 
@@ -43,7 +32,7 @@ public class DataTable {
     public final void addDataTypes(final String type) {
         this.dataTypes.add(type);
     }
-    
+
     /**
      * Gets the column data type.
      * 
@@ -54,7 +43,7 @@ public class DataTable {
     public final String getDataType(final int index) {
         return this.dataTypes.get(index);
     }
-    
+
     /**
      * Adds the column.
      * 
@@ -211,9 +200,9 @@ public class DataTable {
      * @return the string
      */
     public final String stringValue(final int row, final String column) {
-        return (String) (this.get(row, column));
+        return (this.get(row, column));
     }
-    
+
     /**
      * Integer value.
      * 
@@ -223,10 +212,14 @@ public class DataTable {
      *            the column
      * @return the string
      */
-    public final int intValue(final int row, final int column) {
-        return Integer.parseInt(this.get(row, column));
+    public final Integer intValue(final int row, final int column) {
+        try {
+            return Integer.valueOf(this.get(row, column));
+        } catch (NumberFormatException e) {
+            return null;
+        }
     }
-    
+
     /**
      * Boolean value.
      * 
@@ -240,5 +233,22 @@ public class DataTable {
         return Boolean.parseBoolean(this.get(row, column));
     }
     
+    /**
+     * Double value.
+     * 
+     * @param row
+     *            the row
+     * @param column
+     *            the column
+     * @return the string
+     */
+    public final Double doubleValue(final int row, final int column) {
+        try {
+            return Double.valueOf(this.get(row, column));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
 
 }

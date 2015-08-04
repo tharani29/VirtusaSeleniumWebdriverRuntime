@@ -11,9 +11,9 @@
 
 package com.thoughtworks.selenium;
 
-
 import java.io.BufferedReader;
 import java.io.File;
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.lang.reflect.Method;
@@ -22,11 +22,14 @@ import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 
+import org.apache.commons.lang3.StringEscapeUtils;
 import org.apache.log4j.Logger;
 import org.apache.log4j.PropertyConfigurator;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.firefox.FirefoxProfile;
 import org.openqa.selenium.remote.DesiredCapabilities;
+
+import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
 
 /**
  * Provides a base class that implements some handy functionality for Selenium
@@ -40,6 +43,9 @@ public class SeleneseTestBaseVir {
 
     /** The capture screen shot on failure. */
     private boolean captureScreenShotOnFailure = false;
+
+    /** Test case faliure status. */
+    private static boolean testCaseFailStatus;
 
     /** The driver. */
     private WebDriver driver = null;
@@ -66,9 +72,16 @@ public class SeleneseTestBaseVir {
     /** The database instances. */
     private Map<String, Connection> databaseInstances =
             new HashMap<String, Connection>();
+    
+    /** The database instances. */
+    private Map<String, ODatabaseDocumentTx> orientDatabaseInstances =
+            new HashMap<String, ODatabaseDocumentTx>();
 
     /** The verification errors. */
     private StringBuffer verificationErrors = new StringBuffer();
+    
+    /** Stores the time taken to each command. */
+    private static String logTimeCSVFileBuilder = "";
 
     /**
      * Initialize the logger.
@@ -79,10 +92,9 @@ public class SeleneseTestBaseVir {
 
     /**
      * Get the logger for each corresponding class.
-     * 
-     * @param clz
-     *            the clz
-     * 
+     *
+     * @param clz the clz
+     *
      */
     public final void getLogger(final Class< ? > clz) {
         setLog(Logger.getLogger(clz));
@@ -199,14 +211,19 @@ public class SeleneseTestBaseVir {
                             setDefaultProfile(new FirefoxProfile(
                                     new File(input)));
                         } catch (Exception e) {
-                            log.error("Cannot find the firefox profile. Switching to the default.", e);
+                            log.error(
+                                    "Cannot find the firefox profile. Switching to the default.",
+                                    e);
                             e.printStackTrace();
                         }
                     }
 
                 } catch (Exception e) {
                     log.error("Unexpected error occured.", e);
-                    e.printStackTrace();
+                    throw new IllegalArgumentException(
+                            "Cannot configure selenium with given server configuration : "
+                                    + serverConfig, e);
+
                 }
             }
         }
@@ -219,51 +236,112 @@ public class SeleneseTestBaseVir {
      *            the browser string
      */
     public final void configWebDriver(final String browserName) {
-        if (browserString.contains("chrome")
-                || browserString.contains("Chrome")) {
+        if (browserName.contains("chrome") || browserName.contains("Chrome")) {
 
             setBrowserString(browserString);
-            File chromedriver =
-                    new File("src" + File.separator + "main" + File.separator + "resources" 
-                            + File.separator + "lib" + File.separator + "chromedriver.exe");
+            File chromedriver = getChromeDriverServerExecutables();
             System.setProperty("webdriver.chrome.driver",
                     chromedriver.getAbsolutePath());
             setWebDriverCapabilities(new DesiredCapabilities());
-        } else if (browserString.contains("safari")) {
+        } else if (browserName.contains("safari")) {
 
             setBrowserString(browserString);
             setWebDriverCapabilities(new DesiredCapabilities());
-        } else if (browserString.contains("iexplore")) {
+        } else if (browserName.contains("iexplore")) {
 
             setBrowserString(browserString);
             setWebDriverCapabilities(new DesiredCapabilities());
             File iedriver;
             if (isx64bit()) {
                 iedriver =
-                        new File("src" + File.separator + "main" + File.separator 
-                                + "resources" + File.separator + "lib" + File.separator
+                        new File("src" + File.separator + "main"
+                                + File.separator + "resources" + File.separator
+                                + "lib" + File.separator
                                 + "IEDriverServer(x64).exe");
             } else {
                 iedriver =
-                        new File("src" + File.separator + "main" + File.separator
-                                + "resources" + File.separator + "lib" + File.separator
+                        new File("src" + File.separator + "main"
+                                + File.separator + "resources" + File.separator
+                                + "lib" + File.separator
                                 + "IEDriverServer(x86).exe");
             }
             System.setProperty("webdriver.ie.driver",
                     iedriver.getAbsolutePath());
 
-        } else if (browserString.contains("firefox")) {
+        } else if (browserName.contains("firefox")) {
 
             setBrowserString(browserString);
             setWebDriverCapabilities(new DesiredCapabilities());
             setDefaultProfile(new FirefoxProfile());
-        } else if (browserString.contains("opera")) {
+        } else if (browserName.contains("opera")) {
 
             setBrowserString(browserString);
             setWebDriverCapabilities(new DesiredCapabilities());
         } else {
             throw new AssertionError("Unsupported Browser");
         }
+    }
+
+    /**
+     * Checks the os architecture and returns the chrome driver file.
+     * 
+     * @return File of the chrome driver executable.
+     */
+    private  File getChromeDriverServerExecutables() {
+        String os =
+                System.getProperty("os.name").toLowerCase(Locale.getDefault());
+        File file = null;
+        if (os.contains("win")) {
+            file =
+                    new File("src" + File.separator + "main" + File.separator
+                            + "resources" + File.separator + "lib"
+                            + File.separator + "chromedriver_win.exe");
+        } else if (os.contains("mac")) {
+            try {
+
+                Runtime.getRuntime().exec(
+                        "chmod 777 chromedriver_mac",
+                        null,
+                        new File("src" + File.separator + "main"
+                                + File.separator + "resources" + File.separator
+                                + "lib"));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            file =
+                    new File("src" + File.separator + "main" + File.separator
+                            + "resources" + File.separator + "lib"
+                            + File.separator + "chromedriver_mac");
+
+        } else if (os.contains("nux")) {
+
+            if (isx64bit()) {
+                file =
+                        new File("src" + File.separator + "main"
+                                + File.separator + "resources" + File.separator
+                                + "lib" + File.separator
+                                + "chromedriver_linux(x64)");
+            } else {
+                file =
+                        new File("src" + File.separator + "main"
+                                + File.separator + "resources" + File.separator
+                                + "lib" + File.separator
+                                + "chromedriver_linux(x86)");
+            }
+        }
+
+        return file;
+    }
+
+    /**
+     * Get operating system.
+     * 
+     * @return operating system
+     */
+
+    protected final String getOperatingSystem() {
+
+        return System.getProperty("os.name").toLowerCase(Locale.getDefault());
     }
 
     /**
@@ -286,8 +364,7 @@ public class SeleneseTestBaseVir {
     public static synchronized void setBrowserString(final String browser) {
         browserString = browser;
     }
-    
-    
+
     /**
      * Checks if is process running.
      * 
@@ -297,7 +374,8 @@ public class SeleneseTestBaseVir {
      * @throws Exception
      *             the exception
      */
-    public final boolean isProcessRunning(final String serviceName) throws Exception {
+    public final boolean isProcessRunning(final String serviceName)
+            throws Exception {
         String tasklist = "tasklist";
         Process p = Runtime.getRuntime().exec(tasklist);
         BufferedReader reader = null;
@@ -333,11 +411,16 @@ public class SeleneseTestBaseVir {
      *             the exception
      */
     public final void killProcess(final String serviceName) throws Exception {
-        String kill = "taskkill /F /IM ";
-        Runtime.getRuntime().exec(kill + serviceName);
+
+        String os = getOperatingSystem();
+        Runtime runtime = Runtime.getRuntime();
+        if (os.contains("win")) {
+            runtime.exec("taskkill /F /IM " + serviceName);
+        } else if (os.contains("mac") || os.contains("nux")) {
+            runtime.exec("killall -9 " + serviceName);
+        }
     }
-    
-    
+
     /**
      * Replace xml special characters.
      * 
@@ -348,9 +431,16 @@ public class SeleneseTestBaseVir {
     public final String replaceXMLSpecialCharacters(final String text) {
         String replaced = text;
 
-        return replaced.replaceAll("<", "&lt;").replaceAll(">", "&gt;")
-                .replaceAll("&", "&amp;").replaceAll("'", "&apos;")
-                .replaceAll("\"", "&quot;").replaceAll("�", "");
+        replaced = StringEscapeUtils.escapeXml(replaced);
+        replaced = replaced.replaceAll("»", "&#187;");
+        replaced = replaced.replaceAll("«", "&#171;");
+        replaced = replaced.replaceAll("—", "&#8212;");
+        replaced = replaced.replaceAll("–", "&#8211;");
+        replaced = replaced.replaceAll("£", "&#163;");
+        replaced = replaced.replaceAll("¥", "&#165;");
+        return (replaced.replaceAll("€", "&#8364;"));
+
+        // return replaced;
     }
 
     /**
@@ -379,7 +469,6 @@ public class SeleneseTestBaseVir {
         }
         return stacktraceLines.toString();
     }
-    
 
     /**
      * Failure.
@@ -401,6 +490,7 @@ public class SeleneseTestBaseVir {
      */
     public static void assertTrue(final String message, final boolean condition) {
         if (!condition) {
+            setTestCaseFailedStatus(true);
             failure(message);
         }
     }
@@ -411,7 +501,7 @@ public class SeleneseTestBaseVir {
      * @param millisecs
      *            the millisecs
      */
-    public final void pause(final int millisecs) {
+    public final void sleep(final int millisecs) {
         try {
             Thread.sleep(millisecs);
         } catch (InterruptedException e) {
@@ -471,6 +561,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the web driver capabilities.
+     * 
      * @return the webDriverCapabilities
      */
     public static final DesiredCapabilities getWebDriverCapabilities() {
@@ -478,6 +570,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the web driver capabilities.
+     * 
      * @param capabilities
      *            the webDriverCapabilities to set
      */
@@ -487,6 +581,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the selenium instances.
+     * 
      * @return the seleniumInstances
      */
     public final Map<String, WebDriver> getSeleniumInstances() {
@@ -494,6 +590,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the selenium instances.
+     * 
      * @param seleniumInstancesMap
      *            the seleniumInstances to set
      */
@@ -503,6 +601,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Put selenium instances.
+     * 
      * @param instanceName
      *            the instanceName to put
      * @param webDriver
@@ -514,6 +614,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the selenium instance name.
+     * 
      * @return the seleniumInstanceName
      */
     public final String getSeleniumInstanceName() {
@@ -521,6 +623,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the selenium instance name.
+     * 
      * @param seleniumInstanceNameString
      *            the seleniumInstanceNameString to set
      */
@@ -530,6 +634,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the default profile.
+     * 
      * @return the defaultProfile
      */
     public static final FirefoxProfile getDefaultProfile() {
@@ -537,6 +643,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the default profile.
+     * 
      * @param defaultProfileFirefox
      *            the defaultProfile to set
      */
@@ -546,6 +654,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the log.
+     * 
      * @return the log
      */
     public static final Logger getLog() {
@@ -553,6 +663,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the log.
+     * 
      * @param logValue
      *            the log to set
      */
@@ -561,6 +673,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the database instances.
+     * 
      * @return the databaseInstances
      */
     public final Map<String, Connection> getDatabaseInstances() {
@@ -568,6 +682,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the database instances.
+     * 
      * @param databaseInstancesMap
      *            the databaseInstances to set
      */
@@ -577,6 +693,31 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Put database instances.
+     * 
+     * @param instanceName
+     *            the instanceName to put
+     * @param connection
+     *            the connection to put
+     */
+    public final void putOrientDatabaseInstances(final String instanceName,
+            final ODatabaseDocumentTx connection) {
+        this.orientDatabaseInstances.put(instanceName, connection);
+    }
+    /**
+     * Sets the database instances.
+     * 
+     * @param databaseInstancesMap
+     *            the databaseInstances to set
+     */
+    public final void setOrientDatabaseInstances(
+            final Map<String, ODatabaseDocumentTx> databaseInstancesMap) {
+        this.orientDatabaseInstances = databaseInstancesMap;
+    }
+
+    /**
+     * Put database instances.
+     * 
      * @param instanceName
      *            the instanceName to put
      * @param connection
@@ -588,6 +729,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the verification errors.
+     * 
      * @return the verificationErrors
      */
     public final StringBuffer getVerificationErrors() {
@@ -595,6 +738,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the verification errors.
+     * 
      * @param verificationErrorsString
      *            the verificationErrors to set
      */
@@ -604,6 +749,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Checks if is this is windows.
+     * 
      * @return the thisIsWindows
      */
     public static final boolean isThisIsWindows() {
@@ -611,6 +758,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the browser string.
+     * 
      * @return the browserString
      */
     public static final String getBrowserString() {
@@ -618,6 +767,8 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Gets the driver.
+     * 
      * @return the driver
      */
     public final WebDriver getDriver() {
@@ -625,10 +776,99 @@ public class SeleneseTestBaseVir {
     }
 
     /**
+     * Sets the driver.
+     * 
      * @param driverObj
      *            the driver to set
      */
     public final void setDriver(final WebDriver driverObj) {
         this.driver = driverObj;
+    }
+
+    /**
+     * Sets the test case failed status.
+     * 
+     * @param isFailed
+     *            the new test case failed status
+     */
+    public static void setTestCaseFailedStatus(final boolean isFailed) {
+        testCaseFailStatus = isFailed;
+    }
+
+    /**
+     * Gets the test case failed status.
+     * 
+     * @return the test case failed status
+     */
+    public static boolean getTestCaseFailedStatus() {
+        return testCaseFailStatus;
+    }
+    /**
+     * Generates the log time CSV file in the target/logs folder.
+     * 
+     */
+    /**
+     * Generates the log time CSV file in the target/logs folder.
+     * 
+     */
+    public final void generateTimeLogCSV() {
+        FileWriter writer = null;
+        //Logger log = getLog();
+        try {
+            File logsDir = new File("target" + File.separator + "logs");
+            if (!logsDir.exists()) {
+                if (logsDir.mkdir()) {
+                    // success message
+                    log.info("mkdir successfully completed");
+                } else {
+                    // fail message
+                    log.error("mkdir failed.");
+                }
+            }
+            writer = new FileWriter("ExecutionTime.csv");
+            writer.append(logTimeCSVFileBuilder);
+            writer.flush();
+        } catch (IOException e) {
+            log.error(e);
+            e.printStackTrace();
+        } catch (Exception e) {
+            log.error(e);
+            e.printStackTrace();
+        } finally {
+            if (writer != null) {
+                try {
+                    writer.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+        }
+    }
+
+    /**
+     * Gets the log time csv file builder.
+     *
+     * @return the log time csv file builder
+     */
+    public static String getLogTimeCSVFileBuilder() {
+        return logTimeCSVFileBuilder;
+    }
+
+    /**
+     * Sets the log time csv file builder.
+     *
+     * @param logTimeCSVFileBuilderstring the new log time csv file builder
+     */
+    public static void setLogTimeCSVFileBuilder(final String logTimeCSVFileBuilderstring) {
+        SeleneseTestBaseVir.logTimeCSVFileBuilder += logTimeCSVFileBuilderstring;
+    }
+
+    /**
+     * Gets the orient database instances.
+     *
+     * @return the orient database instances
+     */
+    public final synchronized Map<String, ODatabaseDocumentTx> getOrientDatabaseInstances() {
+    return orientDatabaseInstances;
     }
 }

@@ -197,8 +197,6 @@ public class KeyCodes {
         keyCodes.put("F10", new int[] {KeyEvent.VK_F10});
         keyCodes.put("F11", new int[] {KeyEvent.VK_F11});
         keyCodes.put("F12", new int[] {KeyEvent.VK_F12});
-        keyCodes.put("alt+F4", new int[] {KeyEvent.VK_ALT, KeyEvent.VK_F4});
-        keyCodes.put("alt+\t", new int[] {KeyEvent.VK_ALT, KeyEvent.VK_TAB});
         keyCodes.put("insert", new int[] {KeyEvent.VK_INSERT});
         keyCodes.put("home", new int[] {KeyEvent.VK_HOME});
         keyCodes.put("pageup", new int[] {KeyEvent.VK_PAGE_UP});
@@ -206,8 +204,7 @@ public class KeyCodes {
         keyCodes.put("delete", new int[] {KeyEvent.VK_DELETE});
         keyCodes.put("end", new int[] {KeyEvent.VK_END});
         keyCodes.put("pagedown", new int[] {KeyEvent.VK_PAGE_DOWN});
-        keyCodes.put("shift+\t", new int[] {KeyEvent.VK_SHIFT, KeyEvent.VK_TAB});
-        keyCodes.put("ctrl+o", new int[] {KeyEvent.VK_CONTROL, KeyEvent.VK_O});
+
     }
 
     /**

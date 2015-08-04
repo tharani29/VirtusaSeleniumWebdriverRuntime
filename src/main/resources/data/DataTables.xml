@@ -1,0 +1,55 @@
+<DataTables xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:noNamespaceSchemaLocation="file://C:/VTAF/base-qa-3.0.6.1/vtaf/vtaf-ui/xsd/DataTables.xsd" >
+	<Table name="login">
+		<Header>
+			<Column name="Username" type="String" />
+			<Column name="Password" type="String" />
+		</Header>
+		<Row>
+			<Value>johnny_english</Value>
+			<Value>Dwn@123#34Os</Value>
+		</Row>
+
+</Table>
+	<Table name="accBalanceType">
+		<Header>
+			<Column name="Checking_Account" type="String" />
+			<Column name="Money_Market" type="String" />
+			<Column name="SavingsAccount" type="String" />
+			<Column name="Asset_Management" type="String" />
+			<Column name="BalanceType" type="String" />
+			<Column name="CheckAccount" type="String" />
+			<Column name="MonMarket" type="String" />
+			<Column name="SaveAccount" type="String" />
+			<Column name="AssetManagementAccount" type="String" />
+			<Column name="GBP" type="String" />
+		</Header>
+		<Row>
+			<Value>Checking Account Balance</Value>
+			<Value>Money Market Account Balance</Value>
+			<Value>Savings Account Balance</Value>
+			<Value>Asset Management Account Balance</Value>
+			<Value>Checking Account Balance,Money Market Account Balance,Savings Account Balance,Asset Management Account Balance</Value>
+			<Value>Checking Account</Value>
+			<Value>Money Market Account</Value>
+			<Value>Savings Account</Value>
+			<Value>Asset Management Account</Value>
+			<Value>500.11</Value>
+		</Row>
+
+</Table>
+	<Table name="errorMessages">
+		<Header>
+			<Column name="SameTransfer" type="String" />
+			<Column name="TransactionLimit" type="String" />
+			<Column name="Comment_S" type="String" />
+		</Header>
+		<Row>
+			<Value>From&apos; and &apos;To&apos; account cannot be the same.</Value>
+			<Value>Transaction amount exceeds daily transaction limit.</Value>
+			<Value>Transaction Succeed!</Value>
+		</Row>
+
+</Table>
+
+</DataTables>

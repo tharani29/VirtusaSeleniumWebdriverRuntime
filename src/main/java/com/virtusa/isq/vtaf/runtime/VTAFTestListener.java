@@ -147,7 +147,7 @@ public class VTAFTestListener implements IInvokedMethodListener {
             final ITestResult result) {
 
         if (methodtest.isTestMethod()) {
-            
+
             String dataProvider = "";
 
             Method method =
@@ -171,22 +171,7 @@ public class VTAFTestListener implements IInvokedMethodListener {
                 }
 
             }
-            String methodName = method.getName();
-            if (dataProvider.indexOf(methodName) > -1) {
-                Object[][] dataset =
-                        getDataTabaleMeta(dataProvider.substring(0,
-                                dataProvider.indexOf("_" + methodName)));
 
-                if (dataset.length > dataIteration) {
-
-                    StringBuilder dataStringBuilder = new StringBuilder();
-                    for (int columns = 0; columns < dataset[dataIteration].length; columns++) {
-
-                        dataStringBuilder.append(" |  ").append(tableHeaders.get(columns)).
-                            append('=').append(dataset[dataIteration][columns]);
-                    }
-                }
-            }
             dataIteration++;
 
         }
@@ -231,8 +216,10 @@ public class VTAFTestListener implements IInvokedMethodListener {
         if (tables == null) {
             File tempFile = new File("tempFile");
             if (tempFile.getAbsolutePath().contains("grid")) {
-                file = new File("src" + File.separator + "main" + File.separator 
-                        + "resources" + File.separator + "data" + File.separator + "DataTables.xml");
+                file =
+                        new File("src" + File.separator + "main"
+                                + File.separator + "resources" + File.separator
+                                + "data" + File.separator + "DataTables.xml");
             } else {
                 file =
                         new File("grid" + File.separator
@@ -263,8 +250,10 @@ public class VTAFTestListener implements IInvokedMethodListener {
                                 + "data" + File.separator + "DataTables.xml");
             } else {
 
-                file = new File("src" + File.separator + "main" + File.separator 
-                       + "resources" + File.separator + "data" + File.separator + "DataTables.xml");
+                file =
+                        new File("src" + File.separator + "main"
+                                + File.separator + "resources" + File.separator
+                                + "data" + File.separator + "DataTables.xml");
             }
             tables = MetaDataTablesParser.parseTables(file);
         }

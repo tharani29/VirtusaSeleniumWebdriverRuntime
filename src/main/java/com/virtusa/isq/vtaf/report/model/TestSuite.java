@@ -9,7 +9,6 @@
  * governing permissions and limitations under the License.
  */
 
-
 package com.virtusa.isq.vtaf.report.model;
 
 import java.util.ArrayList;
@@ -21,22 +20,22 @@ public class TestSuite {
 
     /** The testsuitename. */
     private String testsuitename;
-    
+
     /** The iterationcount. */
     private String iterationcount;
-    
+
     /** The maxchildren. */
     private String maxchildren;
-    
+
     /** The result. */
     private String result;
-    
+
     /** The duration. */
     private String duration;
-    
+
     /** The type. */
     private String type;
-    
+
     /** The rid. */
     private String rid;
 
@@ -45,17 +44,23 @@ public class TestSuite {
 
     /**
      * Instantiates a new test suite.
-     *
-     * @param testCaseName the test case name
-     * @param iterationCount the iteration count
-     * @param maxChildren the max children
-     * @param execDuration the exec duration
-     * @param suiteType the suite type
-     * @param rId the r id
+     * 
+     * @param testCaseName
+     *            the test case name
+     * @param iterationCount
+     *            the iteration count
+     * @param maxChildren
+     *            the max children
+     * @param execDuration
+     *            the exec duration
+     * @param suiteType
+     *            the suite type
+     * @param rId
+     *            the r id
      */
     public TestSuite(final String testCaseName, final String iterationCount,
-            final String maxChildren, final String execDuration, final String suiteType,
-            final String rId) {
+            final String maxChildren, final String execDuration,
+            final String suiteType, final String rId) {
         super();
         this.testsuitename = testCaseName;
         this.iterationcount = iterationCount;
@@ -70,7 +75,7 @@ public class TestSuite {
 
     /**
      * Gets the testsuitename.
-     *
+     * 
      * @return the testsuitename
      */
     public final String getTestsuitename() {
@@ -79,7 +84,7 @@ public class TestSuite {
 
     /**
      * Gets the iterationcount.
-     *
+     * 
      * @return the iterationcount
      */
     public final String getIterationcount() {
@@ -88,7 +93,7 @@ public class TestSuite {
 
     /**
      * Gets the maxchildren.
-     *
+     * 
      * @return the maxchildren
      */
     public final String getMaxchildren() {
@@ -97,7 +102,7 @@ public class TestSuite {
 
     /**
      * Gets the result.
-     *
+     * 
      * @return the result
      */
     public final String getResult() {
@@ -106,7 +111,7 @@ public class TestSuite {
 
     /**
      * Gets the duration.
-     *
+     * 
      * @return the duration
      */
     public final String getDuration() {
@@ -115,7 +120,7 @@ public class TestSuite {
 
     /**
      * Gets the type.
-     *
+     * 
      * @return the type
      */
     public final String getType() {
@@ -124,7 +129,7 @@ public class TestSuite {
 
     /**
      * Gets the rid.
-     *
+     * 
      * @return the rid
      */
     public final String getRid() {
@@ -133,7 +138,7 @@ public class TestSuite {
 
     /**
      * Gets the test cases.
-     *
+     * 
      * @return the test cases
      */
     public final ArrayList<TestCase> getTestCases() {
@@ -142,11 +147,12 @@ public class TestSuite {
 
     /**
      * Sets the result.
-     *
-     * @param tsResult the new result
+     * 
+     * @param tsResult
+     *            the new result
      */
     public final void setResult(final String tsResult) {
         this.result = tsResult;
     }
-   
+
 }

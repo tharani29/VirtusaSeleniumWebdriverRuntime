@@ -9,7 +9,6 @@
  * governing permissions and limitations under the License.
  */
 
-
 package com.virtusa.isq.vtaf.report.reporter;
 
 import java.awt.AWTException;
@@ -46,7 +45,7 @@ public class Reporter {
 
     /**
      * Inits the report directory.
-     *
+     * 
      * @return the string
      */
     private String initReportDirectory() {
@@ -61,8 +60,9 @@ public class Reporter {
 
         try {
             if (!reportFolder.exists() && !reportFolder.mkdirs()) {
-                throw new RuntimeException("Cannot create new folder in location " 
-                            + reportFolder.getAbsolutePath());
+                throw new RuntimeException(
+                        "Cannot create new folder in location "
+                                + reportFolder.getAbsolutePath());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -76,8 +76,9 @@ public class Reporter {
 
     /**
      * Copy report helper files.
-     *
-     * @param reportFolderStr the report folder str
+     * 
+     * @param reportFolderStr
+     *            the report folder str
      */
     private void copyReportHelperFiles(final String reportFolderStr) {
         File reportTemplateHtml =
@@ -103,8 +104,9 @@ public class Reporter {
 
     /**
      * Adds the new test suite.
-     *
-     * @param testSuiteName the test suite name
+     * 
+     * @param testSuiteName
+     *            the test suite name
      */
     public final void addNewTestSuite(final String testSuiteName) {
         builder.addNewTestSuite(testSuiteName, "0ms");
@@ -112,8 +114,9 @@ public class Reporter {
 
     /**
      * Adds the new test case.
-     *
-     * @param testCaseName the test case name
+     * 
+     * @param testCaseName
+     *            the test case name
      */
     public final void addNewTestCase(final String testCaseName) {
         builder.addNewTestCase(testCaseName, "0ms");
@@ -121,19 +124,35 @@ public class Reporter {
 
     /**
      * Report step results.
-     *
-     * @param isPassed the is passed
-     * @param category the category
-     * @param message the message
-     * @param loglvl the loglvl
-     * @param stacktrace the stacktrace
+     * 
+     * @param isPassed
+     *            the is passed
+     * @param category
+     *            the category
+     * @param message
+     *            the message
+     * @param loglvl
+     *            the loglvl
+     * @param stacktrace
+     *            the stacktrace
      */
     public final void reportStepResults(final boolean isPassed,
             final String category, final String message, final String loglvl,
             final String stacktrace) {
 
         if (isPassed) {
-            builder.addNewTestStep(isPassed, category, message, loglvl);
+            
+            if ("SCREENSHOT ".equals(category)) {
+                String screenShot =
+                        saveScreenShot(builder.getReportFolderLocation());
+                String thumbScreenShot = saveScreenshotThumb(screenShot);
+                builder.addNewTestStep(isPassed, category, "images"
+                        + File.separator + screenShot, thumbScreenShot, message,
+                        stacktrace, "Success"); 
+            } else {
+                builder.addNewTestStep(isPassed, category, message, loglvl);
+            }
+            
         } else {
 
             String screenShot =
@@ -148,8 +167,9 @@ public class Reporter {
 
     /**
      * Save screen shot.
-     *
-     * @param reportFolderLocation the report folder location
+     * 
+     * @param reportFolderLocation
+     *            the report folder location
      * @return the string
      */
     private String saveScreenShot(final String reportFolderLocation) {
@@ -167,10 +187,12 @@ public class Reporter {
             capture = new Robot().createScreenCapture(screenRect);
             File screenShotImgFolderFile = new File(screenShotImgFolder);
 
-            if (!screenShotImgFolderFile.exists() && !screenShotImgFolderFile.mkdirs()) {
-                
-                throw new RuntimeException("Cannot create new folder in location " 
-                            + screenShotImgFolderFile.getAbsolutePath());                
+            if (!screenShotImgFolderFile.exists()
+                    && !screenShotImgFolderFile.mkdirs()) {
+
+                throw new RuntimeException(
+                        "Cannot create new folder in location "
+                                + screenShotImgFolderFile.getAbsolutePath());
             }
             File screenShotImg =
                     new File(screenShotImgFolder + File.separator
@@ -188,8 +210,9 @@ public class Reporter {
 
     /**
      * Save screenshot thumb.
-     *
-     * @param screenShotFile the screen shot file
+     * 
+     * @param screenShotFile
+     *            the screen shot file
      * @return the string
      */
     private String saveScreenshotThumb(final String screenShotFile) {

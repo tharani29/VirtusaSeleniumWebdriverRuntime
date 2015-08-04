@@ -49,7 +49,7 @@ public class ObjectMap {
                 if (consts[i].toString().equalsIgnoreCase(
                         objectName.split("\\.")[1])) {
                     Class< ? > sub = consts[i].getClass();
-                    Method mth = sub.getDeclaredMethod("getSrachPath");
+                    Method mth = sub.getDeclaredMethod("getSearchPath");
                     searchPath = (String) mth.invoke(consts[i]);
                     /* Prove it worked. */
                     // System.out.println(val);
@@ -133,12 +133,11 @@ public class ObjectMap {
             final String identifire) {
         String resolvedSearchPath = searchPath;
         List<String> parameterValues = getParameterValues(identifire);
-        for (String param :  parameterValues) {
+        for (String param : parameterValues) {
             if (!"".equals(param)) {
                 resolvedSearchPath =
                         resolvedSearchPath.replace("<"
-                                + param.split("_PARAM:")[0]
-                                + ">",
+                                + param.split("_PARAM:")[0] + ">",
                                 param.split("_PARAM:")[1]);
             }
         }

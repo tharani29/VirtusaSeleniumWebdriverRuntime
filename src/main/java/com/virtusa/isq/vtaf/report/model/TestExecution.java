@@ -9,7 +9,6 @@
  * governing permissions and limitations under the License.
  */
 
-
 package com.virtusa.isq.vtaf.report.model;
 
 import java.util.ArrayList;
@@ -22,43 +21,43 @@ public class TestExecution {
 
     /** The user. */
     private String user;
-    
+
     /** The host. */
     private String host;
-    
+
     /** The osversion. */
     private String osversion;
-    
+
     /** The language. */
     private String language;
-    
+
     /** The screenresolution. */
     private String screenresolution;
-    
+
     /** The timestamp. */
     private String timestamp;
-    
+
     /** The result. */
     private String result;
-    
+
     /** The duration. */
     private String duration;
-    
+
     /** The type. */
     private String type;
-    
+
     /** The totalerrorcount. */
     private int totalerrorcount;
-    
+
     /** The totalwarningcount. */
     private int totalwarningcount;
-    
+
     /** The totalsuccesscount. */
     private int totalsuccesscount;
-    
+
     /** The totalfailedcount. */
     private int totalfailedcount;
-    
+
     /** The totalblockedcount. */
     private int totalblockedcount;
 
@@ -67,14 +66,21 @@ public class TestExecution {
 
     /**
      * Constructs the TestExecution Object.
-     *
-     * @param userName the user name
-     * @param hostName the host name
-     * @param osVersion the os version
-     * @param execLanguage the exec language
-     * @param screenResolution the screen resolution
-     * @param timeStamp the time stamp
-     * @param execDuration the exec duration
+     * 
+     * @param userName
+     *            the user name
+     * @param hostName
+     *            the host name
+     * @param osVersion
+     *            the os version
+     * @param execLanguage
+     *            the exec language
+     * @param screenResolution
+     *            the screen resolution
+     * @param timeStamp
+     *            the time stamp
+     * @param execDuration
+     *            the exec duration
      */
     public TestExecution(final String userName, final String hostName,
             final String osVersion, final String execLanguage,
@@ -101,7 +107,7 @@ public class TestExecution {
 
     /**
      * Gets the user.
-     *
+     * 
      * @return the user
      */
     public final String getUser() {
@@ -110,7 +116,7 @@ public class TestExecution {
 
     /**
      * Gets the host.
-     *
+     * 
      * @return the host
      */
     public final String getHost() {
@@ -119,7 +125,7 @@ public class TestExecution {
 
     /**
      * Gets the osversion.
-     *
+     * 
      * @return the osversion
      */
     public final String getOsversion() {
@@ -128,7 +134,7 @@ public class TestExecution {
 
     /**
      * Gets the language.
-     *
+     * 
      * @return the language
      */
     public final String getLanguage() {
@@ -137,7 +143,7 @@ public class TestExecution {
 
     /**
      * Gets the screenresolution.
-     *
+     * 
      * @return the screenresolution
      */
     public final String getScreenresolution() {
@@ -146,7 +152,7 @@ public class TestExecution {
 
     /**
      * Gets the timestamp.
-     *
+     * 
      * @return the timestamp
      */
     public final String getTimestamp() {
@@ -155,7 +161,7 @@ public class TestExecution {
 
     /**
      * Gets the result.
-     *
+     * 
      * @return the result
      */
     public final String getResult() {
@@ -164,7 +170,7 @@ public class TestExecution {
 
     /**
      * Gets the duration.
-     *
+     * 
      * @return the duration
      */
     public final String getDuration() {
@@ -173,7 +179,7 @@ public class TestExecution {
 
     /**
      * Gets the type.
-     *
+     * 
      * @return the type
      */
     public final String getType() {
@@ -182,7 +188,7 @@ public class TestExecution {
 
     /**
      * Gets the totalerrorcount.
-     *
+     * 
      * @return the totalerrorcount
      */
     public final int getTotalerrorcount() {
@@ -191,7 +197,7 @@ public class TestExecution {
 
     /**
      * Gets the totalwarningcount.
-     *
+     * 
      * @return the totalwarningcount
      */
     public final int getTotalwarningcount() {
@@ -200,7 +206,7 @@ public class TestExecution {
 
     /**
      * Gets the totalsuccesscount.
-     *
+     * 
      * @return the totalsuccesscount
      */
     public final int getTotalsuccesscount() {
@@ -209,7 +215,7 @@ public class TestExecution {
 
     /**
      * Gets the totalfailedcount.
-     *
+     * 
      * @return the totalfailedcount
      */
     public final int getTotalfailedcount() {
@@ -218,7 +224,7 @@ public class TestExecution {
 
     /**
      * Gets the totalblockedcount.
-     *
+     * 
      * @return the totalblockedcount
      */
     public final int getTotalblockedcount() {
@@ -227,7 +233,7 @@ public class TestExecution {
 
     /**
      * Gets the test suites.
-     *
+     * 
      * @return the test suites
      */
     public final List<TestSuite> getTestSuites() {
@@ -236,8 +242,9 @@ public class TestExecution {
 
     /**
      * Sets the totalerrorcount.
-     *
-     * @param totalErrorCount the new totalerrorcount
+     * 
+     * @param totalErrorCount
+     *            the new totalerrorcount
      */
     public final void setTotalerrorcount(final int totalErrorCount) {
 
@@ -246,8 +253,9 @@ public class TestExecution {
 
     /**
      * Sets the totalwarningcount.
-     *
-     * @param totalWarningCount the new totalwarningcount
+     * 
+     * @param totalWarningCount
+     *            the new totalwarningcount
      */
     public final void setTotalwarningcount(final int totalWarningCount) {
         this.totalwarningcount += totalWarningCount;
@@ -255,8 +263,9 @@ public class TestExecution {
 
     /**
      * Sets the totalsuccesscount.
-     *
-     * @param totalSuccessCount the new totalsuccesscount
+     * 
+     * @param totalSuccessCount
+     *            the new totalsuccesscount
      */
     public final void setTotalsuccesscount(final int totalSuccessCount) {
         this.totalsuccesscount += totalSuccessCount;
@@ -264,8 +273,9 @@ public class TestExecution {
 
     /**
      * Sets the totalfailedcount.
-     *
-     * @param totalFailedCount the new totalfailedcount
+     * 
+     * @param totalFailedCount
+     *            the new totalfailedcount
      */
     public final void setTotalfailedcount(final int totalFailedCount) {
         this.totalfailedcount += totalFailedCount;
@@ -273,13 +283,12 @@ public class TestExecution {
 
     /**
      * Sets the totalblockedcount.
-     *
-     * @param totalBlockedCount the new totalblockedcount
+     * 
+     * @param totalBlockedCount
+     *            the new totalblockedcount
      */
     public final void setTotalblockedcount(final int totalBlockedCount) {
         this.totalblockedcount += totalBlockedCount;
     }
-    
-   
 
 }

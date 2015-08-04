@@ -9,7 +9,6 @@
  * governing permissions and limitations under the License.
  */
 
-
 package com.virtusa.isq.vtaf.report.model;
 
 import java.util.ArrayList;
@@ -21,22 +20,22 @@ public class TestCase {
 
     /** The modulename. */
     private String modulename;
-    
+
     /** The moduletype. */
     private String moduletype;
-    
+
     /** The result. */
     private String result;
-    
+
     /** The duration. */
     private String duration;
-    
+
     /** The type. */
     private String type;
-    
+
     /** The rid. */
     private String rid;
-    
+
     /** The test case id. */
     private int testCaseId;
 
@@ -45,14 +44,18 @@ public class TestCase {
 
     /**
      * Instantiates a new test case.
-     *
-     * @param moduleName the modulename
-     * @param timeDuration the time duration
-     * @param ridNo the rid no
-     * @param testCaseid the test caseid
+     * 
+     * @param moduleName
+     *            the modulename
+     * @param timeDuration
+     *            the time duration
+     * @param ridNo
+     *            the rid no
+     * @param testCaseid
+     *            the test caseid
      */
-    public TestCase(final String moduleName, final String timeDuration, final String ridNo,
-            final int testCaseid) {
+    public TestCase(final String moduleName, final String timeDuration,
+            final String ridNo, final int testCaseid) {
         super();
         this.modulename = moduleName;
         this.moduletype = "UserCode";
@@ -66,7 +69,7 @@ public class TestCase {
 
     /**
      * Gets the modulename.
-     *
+     * 
      * @return the modulename
      */
     public final String getModulename() {
@@ -75,7 +78,7 @@ public class TestCase {
 
     /**
      * Gets the moduletype.
-     *
+     * 
      * @return the moduletype
      */
     public final String getModuletype() {
@@ -84,7 +87,7 @@ public class TestCase {
 
     /**
      * Gets the result.
-     *
+     * 
      * @return the result
      */
     public final String getResult() {
@@ -93,7 +96,7 @@ public class TestCase {
 
     /**
      * Gets the duration.
-     *
+     * 
      * @return the duration
      */
     public final String getDuration() {
@@ -102,7 +105,7 @@ public class TestCase {
 
     /**
      * Gets the type.
-     *
+     * 
      * @return the type
      */
     public final String getType() {
@@ -111,7 +114,7 @@ public class TestCase {
 
     /**
      * Gets the rid.
-     *
+     * 
      * @return the rid
      */
     public final String getRid() {
@@ -120,8 +123,9 @@ public class TestCase {
 
     /**
      * Sets the result.
-     *
-     * @param tcResult the new result
+     * 
+     * @param tcResult
+     *            the new result
      */
     public final void setResult(final String tcResult) {
         this.result = tcResult;
@@ -129,16 +133,16 @@ public class TestCase {
 
     /**
      * Gets the test case id.
-     *
+     * 
      * @return the test case id
      */
     public final int getTestCaseId() {
         return testCaseId;
     }
-    
+
     /**
      * Gets the testSteps.
-     *
+     * 
      * @return the testSteps
      */
     public final ArrayList<TestStep> getTestSteps() {
