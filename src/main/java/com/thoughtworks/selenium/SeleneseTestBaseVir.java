@@ -869,6 +869,6 @@ public class SeleneseTestBaseVir {
      * @return the orient database instances
      */
     public final synchronized Map<String, ODatabaseDocumentTx> getOrientDatabaseInstances() {
-    return orientDatabaseInstances;
+    	return orientDatabaseInstances;
     }
 }

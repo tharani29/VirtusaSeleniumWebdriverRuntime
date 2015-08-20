@@ -45,9 +45,8 @@ import org.testng.annotations.BeforeTest;
 import org.testng.annotations.Optional;
 import org.testng.annotations.Parameters;
 
-import org.openqa.selenium.opera.OperaDriver;
+import com.opera.core.systems.OperaDriver;
 import com.orientechnologies.orient.core.db.document.ODatabaseDocumentTx;
-import com.virtusa.VTAF.reporter.reader.ReportBase;
 import com.virtusa.isq.vtaf.report.reporter.Reporter;
 import com.virtusa.isq.vtaf.utils.PropertyHandler;
 
@@ -57,9 +56,6 @@ import com.virtusa.isq.vtaf.utils.PropertyHandler;
  * The Class SeleneseTestNgHelperVir.
  */
 public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
-
-    /** The reporter. */
-    private static ReportBase reporter;
 
     /** The robot. */
     private static Robot robot;
@@ -218,6 +214,13 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
+     * Inits the reporter.
+     */
+    public static synchronized void initReporter() {
+        resultReporter = new Reporter();
+    }
+    
+    /**
      * Gets the selenium.
      * 
      * 
@@ -253,8 +256,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         Logger log = getLog();
         log.info("Started the selenium webdriver session.");
 
-        reporter.startReporter(method.getDeclaringClass().getCanonicalName(),
-                method.getName());
         log.info("Executing the test case : "
                 + method.getDeclaringClass().getSimpleName() + "."
                 + method.getName());
@@ -434,7 +435,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         resultReporter.endTestReporting();
         setSeleniumInstances(new HashMap<String, WebDriver>());
         setDatabaseInstances(new HashMap<String, Connection>());
-        endTestReporting(false);
         super.checkForVerificationErrors();
         this.cleanBrowserSessions();
     }
@@ -495,14 +495,6 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
     }
 
     /**
-     * Inits the reporter.
-     */
-    public static synchronized void initReporter() {
-        reporter = new ReportBase();
-        resultReporter = new Reporter();
-    }
-
-    /**
      * Inits the robot.
      */
     public static synchronized void initRobot() {
@@ -554,8 +546,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
 
         logTime(step, getCommandStartTime(), getCurrentTime(), log);
 
-        reporter.reportResult(step, result, message);
-
+        
         // Adding data to the new reporter
         try {
             String testStep = step.substring(0, step.indexOf(':'));
@@ -638,17 +629,7 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         return log;
     }
 
-    /**
-     * End test reporting.
-     * 
-     * @param testFailed
-     *            the test failed
-     */
-    public final void endTestReporting(final boolean testFailed) {
-
-        reporter.endResultReporting(testFailed);
-
-    }
+    
 
     /**
      * Gets the current time.
@@ -707,25 +688,8 @@ public class SeleneseTestNgHelperVir extends SeleneseTestBaseVir {
         }
     }
 
-    /**
-     * Gets the reporter.
-     * 
-     * @return the reporter
-     */
-    public static final ReportBase getReporter() {
-        return reporter;
-    }
-
-    /**
-     * Sets the reporter.
-     * 
-     * @param reporterObj
-     *            the reporter to set
-     */
-    public static final void setReporter(final ReportBase reporterObj) {
-        SeleneseTestNgHelperVir.reporter = reporterObj;
-    }
-
+    
+    
     /**
      * Gets the robot.
      * 

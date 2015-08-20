@@ -6184,7 +6184,6 @@ public class SeleniumTestBase extends SeleneseTestNgHelperVir {
         int lineNumber = getLineNumber();
         if (isAssert) {
 
-            endTestReporting(isAssert);
             assertTrue("Failed " + failedMessage + "\n" + errorMessage
                     + " [At : " + callingClassName + "." + currentMethod
                     + "(Line:" + lineNumber + ")]" + "\n", checkingCondition);
