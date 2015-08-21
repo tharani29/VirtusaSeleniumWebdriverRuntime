@@ -9,8 +9,6 @@
 	<url>http://maven.apache.org</url>
 
 	<build>
-		<sourceDirectory>src</sourceDirectory>
-		<outputDirectory>target</outputDirectory>
 		<plugins>
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
